@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TESR Forge — Image & Present Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&family=Kanit:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.min.js"></script>
+<style>
+:root{
+  --bg:#0B0B0D; --panel:#121215; --panel2:#17171B; --line:#26262C; --line2:#33333B;
+  --gold:#C9A84C; --gold-dim:#8A7434; --crimson:#8B0000; --crimson-hi:#B01818;
+  --text:#EDEAE2; --muted:#8E8C86; --ok:#4CAF7D;
+  --radius:4px;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Sarabun',system-ui,sans-serif; font-size:14px;
+  overflow:hidden;
+}
+button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
+input,select,textarea{font-family:inherit; font-size:13px; color:var(--text); background:var(--panel2); border:1px solid var(--line); border-radius:var(--radius); padding:6px 8px; outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold-dim)}
+input[type=range]{-webkit-appearance:none; appearance:none; height:3px; background:var(--line2); border:none; padding:0; border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:var(--gold); border:2px solid #0B0B0D; box-shadow:0 0 0 1px var(--gold-dim)}
+input[type=range]::-moz-range-thumb{width:13px; height:13px; border-radius:50%; background:var(--gold); border:2px solid #0B0B0D}
+input[type=color]{padding:1px; width:34px; height:28px; cursor:pointer}
+input[type=number]{width:70px}
+
+/* ---------- Layout ---------- */
+#app{display:grid; grid-template-rows:56px 1fr; height:100vh}
+header{
+  display:flex; align-items:center; gap:16px; padding:0 14px;
+  background:var(--panel); border-bottom:1px solid var(--line); position:relative; z-index:20;
+}
+/* circuit rail — signature */
+header::after{
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px;
+  background:linear-gradient(90deg, var(--gold) 0 140px, transparent 140px 160px, var(--gold-dim) 160px 60%, transparent 60% calc(60% + 18px), var(--gold-dim) calc(60% + 18px) 100%);
+  opacity:.75; pointer-events:none;
+}
+.brand{display:flex; align-items:center; gap:10px; user-select:none}
+.brand .mark{
+  width:30px; height:30px; border:2px solid var(--gold); border-radius:3px; position:relative; flex:none;
+}
+.brand .mark::before{content:""; position:absolute; inset:5px; background:var(--crimson)}
+.brand .mark::after{content:""; position:absolute; left:-6px; top:12px; width:6px; height:2px; background:var(--gold)}
+.brand h1{font-family:'Prompt'; font-size:16px; font-weight:700; letter-spacing:.14em}
+.brand h1 span{color:var(--gold); font-weight:500}
+.brand small{display:block; font-size:10px; letter-spacing:.28em; color:var(--muted); font-weight:400}
+
+.hgroup{display:flex; align-items:center; gap:8px}
+.hgroup label{font-size:11px; color:var(--muted); letter-spacing:.06em}
+.spacer{flex:1}
+.divv{width:1px; height:26px; background:var(--line)}
+
+.btn{
+  display:inline-flex; align-items:center; gap:6px; padding:7px 12px;
+  border:1px solid var(--line2); border-radius:var(--radius);
+  background:var(--panel2); font-size:13px; line-height:1; white-space:nowrap;
+}
+.btn:hover{border-color:var(--gold-dim); color:#fff}
+.btn.primary{background:var(--crimson); border-color:var(--crimson-hi); font-weight:600}
+.btn.primary:hover{background:var(--crimson-hi)}
+.btn.icon{padding:7px 8px}
+.btn:disabled{opacity:.35; pointer-events:none}
+.btn svg{width:15px; height:15px}
+
+main{display:grid; grid-template-columns:76px 1fr 292px; min-height:0}
+
+/* ---------- Tool rail ---------- */
+#toolRail{
+  background:var(--panel); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; align-items:stretch; padding:8px 0; gap:2px; overflow-y:auto;
+}
+.tool{
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:9px 2px; color:var(--muted); position:relative; border-left:2px solid transparent;
+}
+.tool svg{width:21px; height:21px}
+.tool span{font-size:10px; letter-spacing:.02em}
+.tool:hover{color:var(--text)}
+.tool.active{color:var(--gold); border-left-color:var(--gold); background:linear-gradient(90deg, rgba(201,168,76,.08), transparent)}
+.tool.danger.active{color:var(--crimson-hi); border-left-color:var(--crimson-hi)}
+
+/* ---------- Stage ---------- */
+#stage{
+  position:relative; overflow:auto; background:
+    radial-gradient(1200px 500px at 50% -200px, rgba(139,0,0,.10), transparent 60%),
+    var(--bg);
+}
+#stageInner{min-width:100%; min-height:100%; display:flex; align-items:center; justify-content:center; padding:44px}
+#canvasHolder{box-shadow:0 8px 40px rgba(0,0,0,.6), 0 0 0 1px var(--line); position:relative}
+#canvasHolder.transparent .canvas-container{
+  background-image:
+    linear-gradient(45deg,#2a2a2e 25%,transparent 25%,transparent 75%,#2a2a2e 75%),
+    linear-gradient(45deg,#2a2a2e 25%,transparent 25%,transparent 75%,#2a2a2e 75%);
+  background-size:16px 16px; background-position:0 0,8px 8px; background-color:#1e1e22;
+}
+#dropHint{
+  position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+  background:rgba(11,11,13,.82); border:2px dashed var(--gold); z-index:50;
+  font-family:'Prompt'; font-size:18px; color:var(--gold); pointer-events:none;
+}
+#stage.dragover #dropHint{display:flex}
+
+#pageBar{
+  position:absolute; left:50%; bottom:36px; transform:translateX(-50%); z-index:12;
+  display:flex; align-items:center; gap:6px; padding:6px 10px;
+  background:rgba(18,18,21,.94); border:1px solid var(--line2); border-radius:6px;
+  box-shadow:0 6px 20px rgba(0,0,0,.45);
+}
+#pageBar .pbtn{padding:4px 9px; font-size:12px; color:var(--muted); border:1px solid transparent; border-radius:4px}
+#pageBar .pbtn:hover{color:var(--gold); border-color:var(--gold-dim)}
+#pageBar .pbtn:disabled{opacity:.3; pointer-events:none}
+#pageBar #pgLabel{font-size:12px; color:var(--text); min-width:66px; text-align:center; font-variant-numeric:tabular-nums}
+#pageBar .pdiv{width:1px; height:18px; background:var(--line2)}
+#statusBar{
+  position:absolute; left:0; right:0; bottom:0; height:26px; z-index:10;
+  display:flex; align-items:center; gap:14px; padding:0 12px;
+  background:rgba(18,18,21,.92); border-top:1px solid var(--line);
+  font-size:11px; color:var(--muted); pointer-events:none;
+}
+#statusBar b{color:var(--gold); font-weight:600}
+
+/* ---------- Right panel ---------- */
+#props{
+  background:var(--panel); border-left:1px solid var(--line);
+  display:flex; flex-direction:column; min-height:0;
+}
+#panelScroll{overflow-y:auto; flex:1; padding:12px 12px 20px}
+.panel{display:none}
+.panel.show{display:block}
+.sec{margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--line)}
+.sec:last-child{border-bottom:none}
+.sec h3{
+  font-family:'Prompt'; font-size:11px; font-weight:600; letter-spacing:.18em;
+  color:var(--gold); text-transform:uppercase; margin-bottom:10px;
+  display:flex; align-items:center; gap:8px;
+}
+.sec h3::after{content:""; flex:1; height:1px; background:var(--line)}
+.row{display:flex; align-items:center; gap:8px; margin-bottom:8px}
+.row label{flex:none; width:74px; font-size:12px; color:var(--muted)}
+.row input[type=range]{flex:1}
+.row .val{width:36px; text-align:right; font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+.grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px}
+.chip{
+  padding:6px 4px; text-align:center; font-size:12px; border:1px solid var(--line2);
+  border-radius:var(--radius); background:var(--panel2);
+}
+.chip:hover{border-color:var(--gold-dim)}
+.chip.on{border-color:var(--gold); color:var(--gold)}
+.hint{font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:6px}
+.hint b{color:var(--gold)}
+
+/* brand palette */
+.swatches{display:flex; gap:6px; flex-wrap:wrap}
+.sw{width:26px; height:26px; border-radius:3px; border:1px solid var(--line2); cursor:pointer; position:relative}
+.sw:hover{transform:translateY(-1px); border-color:var(--gold)}
+.sw[data-c="#FFFFFF"]{border-color:#555}
+
+/* layers */
+#layersBox{border-top:1px solid var(--line); max-height:34%; display:flex; flex-direction:column}
+#layersBox h3{
+  font-family:'Prompt'; font-size:11px; letter-spacing:.18em; color:var(--gold);
+  text-transform:uppercase; padding:10px 12px 6px; flex:none;
+}
+#layersList{overflow-y:auto; padding:0 8px 10px}
+.layer{
+  display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:var(--radius);
+  border:1px solid transparent; font-size:12.5px; user-select:none; cursor:pointer;
+}
+.layer:hover{background:var(--panel2)}
+.layer.sel{border-color:var(--gold-dim); background:rgba(201,168,76,.07)}
+.layer .lname{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.layer .mini{opacity:.5; width:22px; text-align:center; flex:none}
+.layer .mini:hover{opacity:1; color:var(--gold)}
+.layer .mini.off{color:var(--crimson-hi); opacity:1}
+.empty{padding:8px 12px; font-size:12px; color:var(--muted)}
+
+/* qr preview */
+#qrPreview{background:#fff; border-radius:var(--radius); padding:10px; display:flex; justify-content:center; margin-bottom:8px; min-height:120px; align-items:center}
+#qrPreview img,#qrPreview canvas{max-width:160px; max-height:160px}
+
+/* templates */
+.tpl{
+  border:1px solid var(--line2); border-radius:var(--radius); overflow:hidden; cursor:pointer; margin-bottom:8px;
+}
+.tpl:hover{border-color:var(--gold)}
+.tpl .thumb{height:74px; display:flex; align-items:center; justify-content:center; font-family:'Prompt'; font-weight:700; letter-spacing:.1em; font-size:13px}
+.tpl .cap{padding:6px 9px; font-size:12px; color:var(--muted); background:var(--panel2)}
+
+/* context menu */
+#ctxMenu{position:fixed; display:none; z-index:120; min-width:195px; background:var(--panel2);
+  border:1px solid var(--line2); border-top:2px solid var(--gold); border-radius:5px;
+  box-shadow:0 10px 30px rgba(0,0,0,.55); padding:5px; font-size:13px}
+#ctxMenu .ci{display:flex; justify-content:space-between; align-items:center; gap:18px; padding:7px 10px; border-radius:4px; cursor:pointer}
+#ctxMenu .ci:hover{background:rgba(201,168,76,.1); color:var(--gold)}
+#ctxMenu .ci.dis{opacity:.35; pointer-events:none}
+#ctxMenu .kk{color:var(--muted); font-size:11px}
+#ctxMenu .cdiv{height:1px; background:var(--line); margin:5px 4px}
+
+/* toast */
+#toast{
+  position:fixed; left:50%; bottom:44px; transform:translateX(-50%) translateY(20px);
+  background:var(--panel2); border:1px solid var(--gold-dim); color:var(--text);
+  padding:9px 16px; border-radius:var(--radius); font-size:13px; opacity:0; pointer-events:none;
+  transition:.25s; z-index:99; box-shadow:0 6px 24px rgba(0,0,0,.5);
+}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+/* modal export */
+.modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:90}
+.modal-bg.show{display:flex}
+.modal{background:var(--panel); border:1px solid var(--line2); border-top:2px solid var(--gold); border-radius:6px; width:340px; padding:18px}
+.modal h2{font-family:'Prompt'; font-size:15px; margin-bottom:14px; letter-spacing:.04em}
+.modal .row label{width:86px}
+.modal .actions{display:flex; justify-content:flex-end; gap:8px; margin-top:14px}
+
+@media (max-width:960px){
+  main{grid-template-columns:64px 1fr 250px}
+  .hgroup label{display:none}
+}
+::-webkit-scrollbar{width:10px; height:10px}
+::-webkit-scrollbar-thumb{background:var(--line2); border-radius:6px; border:2px solid var(--panel)}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="brand">
+    <div class="mark"></div>
+    <div>
+      <h1>TESR <span>FORGE</span></h1>
+      <small>IMAGE · PRESENT</small>
+    </div>
+  </div>
+  <div class="divv"></div>
+  <div class="hgroup">
+    <label>ขนาดงาน</label>
+    <select id="presetSel"></select>
+    <span id="customSize" style="display:none; gap:4px; align-items:center">
+      <input type="number" id="cw" value="1000" min="1" max="4096" style="width:64px"> ×
+      <input type="number" id="ch" value="1000" min="1" max="4096" style="width:64px">
+      <select id="cUnit" title="หน่วย"><option value="px">px</option><option value="cm">ซม.</option></select>
+      <select id="cDpi" style="display:none" title="ความละเอียดงานพิมพ์">
+        <option value="300">300 DPI — พิมพ์คม</option>
+        <option value="150">150 DPI — ทั่วไป</option>
+        <option value="96">96 DPI — จอ</option>
+        <option value="50">50 DPI — ป้าย/ไวนิลใหญ่</option>
+      </select>
+      <button class="btn" id="applySize">ตกลง</button>
+    </span>
+  </div>
+  <div class="hgroup">
+    <label>พื้นหลัง</label>
+    <input type="color" id="bgColor" value="#ffffff" title="สีพื้นหลังชิ้นงาน">
+    <button class="btn" id="bgTransparent" title="พื้นหลังโปร่งใส (PNG)">โปร่งใส</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="hgroup">
+    <button class="btn icon" id="undoBtn" title="ย้อนกลับ (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-5"/></svg></button>
+    <button class="btn icon" id="redoBtn" title="ทำซ้ำ (Ctrl+Y)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h5"/></svg></button>
+  </div>
+  <div class="divv"></div>
+  <div class="hgroup">
+    <button class="btn icon" id="zoomOut" title="ซูมออก">−</button>
+    <span id="zoomLabel" style="font-size:12px; color:var(--muted); width:44px; text-align:center">100%</span>
+    <button class="btn icon" id="zoomIn" title="ซูมเข้า">+</button>
+    <button class="btn" id="zoomFit" title="พอดีจอ">Fit</button>
+  </div>
+  <div class="divv"></div>
+  <div class="hgroup">
+    <button class="btn" id="saveProj" title="บันทึกไฟล์โปรเจกต์ .json ไว้แก้ต่อ">บันทึกงาน</button>
+    <button class="btn" id="openProj" title="เปิดไฟล์โปรเจกต์ .json">เปิดงาน</button>
+    <button class="btn primary" id="exportBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg> Export</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ TOOL RAIL ============ -->
+  <nav id="toolRail">
+    <button class="tool active" data-tool="select" title="เลือก/ย้ายวัตถุ (V)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3 19 12l-6 1.5L9.5 20 5 3Z"/></svg><span>เลือก</span>
+    </button>
+    <button class="tool" data-tool="upload" title="อัปโหลดรูป — หรือลากไฟล์วางบนพื้นที่งานได้เลย">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="10" r="1.7"/><path d="m21 16-5-5-9 9"/></svg><span>รูปภาพ</span>
+    </button>
+    <button class="tool" data-tool="image" title="ปรับสี / ฟิลเตอร์ / ลบพื้นหลัง">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/></svg><span>ปรับภาพ</span>
+    </button>
+    <button class="tool" data-tool="erase" title="ยางลบพื้นหลัง — ลบเองด้วยแปรง">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 21 10-10M3 17 13 7l6 6-8 8H7l-4-4Z"/></svg><span>ยางลบ</span>
+    </button>
+    <button class="tool" data-tool="draw" title="วาด/ระบายสี (B)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20c1.5-.5 3-.5 4-1.5L19.5 7A2.1 2.1 0 0 0 16.5 4L5 15.5C4 16.5 4.5 18.5 4 20Z"/></svg><span>วาด</span>
+    </button>
+    <button class="tool" data-tool="shape" title="รูปทรง/เส้น/ลูกศร">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="9" height="9" rx="1"/><circle cx="16.5" cy="7.5" r="4.5"/></svg><span>รูปทรง</span>
+    </button>
+    <button class="tool" data-tool="text" title="เพิ่มข้อความ (T)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 6V4h14v2M12 4v16m-3 0h6"/></svg><span>ข้อความ</span>
+    </button>
+    <button class="tool" data-tool="qr" title="สร้าง QR Code">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14h1M14 20h1M18 18h3v3h-3z"/></svg><span>QR Code</span>
+    </button>
+    <button class="tool" data-tool="template" title="เทมเพลตแบรนด์ TESR">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg><span>เทมเพลต</span>
+    </button>
+  </nav>
+
+  <!-- ============ STAGE ============ -->
+  <section id="stage">
+    <div id="stageInner">
+      <div id="canvasHolder"><canvas id="c"></canvas></div>
+    </div>
+    <div id="dropHint">วางไฟล์รูปที่นี่</div>
+    <div id="pageBar">
+      <button class="pbtn" id="pgPrev" title="หน้าก่อน">◀</button>
+      <span id="pgLabel">หน้า 1/1</span>
+      <button class="pbtn" id="pgNext" title="หน้าถัดไป">▶</button>
+      <span class="pdiv"></span>
+      <button class="pbtn" id="pgAdd" title="เพิ่มหน้าใหม่ ขนาดเท่าหน้านี้">+ หน้า</button>
+      <button class="pbtn" id="pgDup" title="ทำสำเนาหน้านี้">สำเนา</button>
+      <button class="pbtn" id="pgDel" title="ลบหน้านี้">ลบหน้า</button>
+    </div>
+    <div id="statusBar"><span id="statusTool"><b>เลือก</b> — คลิกวัตถุเพื่อย้าย/ย่อขยาย · ดับเบิลคลิกข้อความเพื่อแก้ · ปุ่ม Delete เพื่อลบ</span><span class="spacer"></span><span id="statusSize"></span></div>
+  </section>
+
+  <!-- ============ RIGHT PANEL ============ -->
+  <aside id="props">
+    <div id="panelScroll">
+
+      <!-- Brand kit — always visible -->
+      <div class="sec">
+        <h3>Brand Kit — TESR</h3>
+        <div class="swatches" id="brandSwatches">
+          <div class="sw" data-c="#000000" style="background:#000" title="ดำ #000000"></div>
+          <div class="sw" data-c="#8B0000" style="background:#8B0000" title="แดงเข้ม #8B0000"></div>
+          <div class="sw" data-c="#B01818" style="background:#B01818" title="แดงสว่าง #B01818"></div>
+          <div class="sw" data-c="#C9A84C" style="background:#C9A84C" title="ทอง #C9A84C"></div>
+          <div class="sw" data-c="#C4A24B" style="background:#C4A24B" title="ทองเข้ม #C4A24B"></div>
+          <div class="sw" data-c="#FFFFFF" style="background:#fff" title="ขาว #FFFFFF"></div>
+        </div>
+        <div class="hint">คลิกสีเพื่อใช้กับวัตถุที่เลือก — งานทุกชิ้นอยู่ในโทนแบรนด์เดียวกัน</div>
+      </div>
+
+      <!-- Object arrange — shows when something selected -->
+      <div class="sec" id="secArrange" style="display:none">
+        <h3>จัดวางวัตถุ</h3>
+        <div class="grid3" style="margin-bottom:6px">
+          <button class="chip" data-arr="front">มาหน้า</button>
+          <button class="chip" data-arr="back">ไปหลัง</button>
+          <button class="chip" data-arr="center">กึ่งกลาง</button>
+          <button class="chip" data-arr="flipH">พลิก ↔</button>
+          <button class="chip" data-arr="flipV">พลิก ↕</button>
+          <button class="chip" data-arr="dup">ทำสำเนา</button>
+        </div>
+        <div class="row"><label>ความทึบ</label><input type="range" id="objOpacity" min="5" max="100" value="100"><span class="val" id="objOpacityVal">100</span></div>
+        <button class="btn" id="delObj" style="width:100%; justify-content:center; color:#e08585">ลบวัตถุนี้ (Delete)</button>
+      </div>
+
+      <!-- ===== PANEL: image adjust ===== -->
+      <div class="panel" id="panel-image">
+        <div class="sec">
+          <h3>ลบพื้นหลัง</h3>
+          <button class="btn primary" id="aiRemove" style="width:100%; justify-content:center">✨ ลบพื้นหลังอัตโนมัติ (AI)</button>
+          <div class="hint" style="margin:6px 0 12px">คลิกเดียวจบ แบบเดียวกับ Remove Background ใน PowerPoint และ Select Subject ใน Photoshop — ใช้ได้กับสินค้า คน สัตว์ พื้นหลังซับซ้อน · ครั้งแรกจะโหลดโมเดล AI (~40MB) จากนั้นเบราว์เซอร์จะจำไว้ ทำงานในเครื่อง รูปไม่ถูกส่งขึ้นเซิร์ฟเวอร์</div>
+          <div style="font-size:11px; color:var(--muted); letter-spacing:.08em; margin-bottom:8px">โหมดสำรอง — จิ้มสีพื้น (ทำงานออฟไลน์ได้)</div>
+          <button class="btn" id="magicPick" style="width:100%; justify-content:center">🎯 คลิกจิ้มสีพื้นหลังบนรูป</button>
+          <div class="row" style="margin-top:8px"><label>ความไว</label><input type="range" id="magicTol" min="2" max="60" value="18"><span class="val" id="magicTolVal">18</span></div>
+          <div class="grid2">
+            <button class="chip" id="magicUndo">ถอนสีล่าสุด</button>
+            <button class="chip" id="magicReset">คืนพื้นหลัง</button>
+          </div>
+          <div class="hint">งานละเอียดขึ้น: ใช้ AI ก่อน แล้วเก็บขอบด้วยเครื่องมือ <b>ยางลบ</b> เหมือนรีทัชใน Photoshop · ตั้งพื้นหลังชิ้นงานเป็น <b>โปร่งใส</b> ก่อน Export PNG</div>
+        </div>
+        <div class="sec">
+          <h3>ฟิลเตอร์ด่วน</h3>
+          <div class="grid3">
+            <button class="chip" data-preset="none">ต้นฉบับ</button>
+            <button class="chip" data-preset="studio">สตูดิโอ</button>
+            <button class="chip" data-preset="punch">จัดจ้าน</button>
+            <button class="chip" data-preset="warm">โทนอุ่น</button>
+            <button class="chip" data-preset="cool">โทนเย็น</button>
+            <button class="chip" data-preset="bw">ขาวดำ</button>
+          </div>
+        </div>
+        <div class="sec">
+          <h3>ปรับสีละเอียด</h3>
+          <div class="row"><label>สว่าง</label><input type="range" id="fBrightness" min="-50" max="50" value="0"><span class="val">0</span></div>
+          <div class="row"><label>คอนทราสต์</label><input type="range" id="fContrast" min="-50" max="50" value="0"><span class="val">0</span></div>
+          <div class="row"><label>สีสด</label><input type="range" id="fSaturation" min="-100" max="100" value="0"><span class="val">0</span></div>
+          <div class="row"><label>เฉดสี</label><input type="range" id="fHue" min="-180" max="180" value="0"><span class="val">0</span></div>
+          <div class="row"><label>เบลอ</label><input type="range" id="fBlur" min="0" max="40" value="0"><span class="val">0</span></div>
+          <div class="grid3" style="margin-top:4px">
+            <button class="chip" id="tSharpen">คมชัด</button>
+            <button class="chip" id="tSepia">ซีเปีย</button>
+            <button class="chip" id="tInvert">กลับสี</button>
+          </div>
+          <button class="btn" id="fReset" style="width:100%; justify-content:center; margin-top:8px">รีเซ็ตการปรับสี</button>
+        </div>
+      </div>
+
+      <!-- ===== PANEL: erase ===== -->
+      <div class="panel" id="panel-erase">
+        <div class="sec">
+          <h3>ยางลบพื้นหลัง</h3>
+          <div class="row"><label>ขนาดแปรง</label><input type="range" id="eraseSize" min="4" max="150" value="36"><span class="val" id="eraseSizeVal">36</span></div>
+          <div class="hint">1. คลิกเลือกรูปที่จะลบก่อน<br>2. ลากเมาส์บนรูปเพื่อลบส่วนที่ไม่ต้องการ — ผลลัพธ์โปร่งใสจริง Export เป็น PNG ได้ทันที<br><b>คำเตือน:</b> การลบแก้ที่เนื้อรูปโดยตรง ใช้ ปุ่มย้อนกลับ (Ctrl+Z) หากพลาด</div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL: draw ===== -->
+      <div class="panel" id="panel-draw">
+        <div class="sec">
+          <h3>วาด / ระบายสี</h3>
+          <div class="row"><label>สี</label><input type="color" id="drawColor" value="#8B0000"></div>
+          <div class="row"><label>ขนาดเส้น</label><input type="range" id="drawSize" min="1" max="80" value="6"><span class="val" id="drawSizeVal">6</span></div>
+          <div class="row"><label>ความทึบ</label><input type="range" id="drawOpacity" min="10" max="100" value="100"><span class="val" id="drawOpacityVal">100</span></div>
+          <div class="grid2">
+            <button class="chip on" data-brush="pencil">ปากกา</button>
+            <button class="chip" data-brush="marker">มาร์กเกอร์</button>
+          </div>
+          <div class="hint">เส้นที่วาดเป็นวัตถุแยกชิ้น — เลือกย้าย/ลบทีหลังได้ในโหมด <b>เลือก</b></div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL: shape ===== -->
+      <div class="panel" id="panel-shape">
+        <div class="sec">
+          <h3>เพิ่มรูปทรง</h3>
+          <div class="grid3">
+            <button class="chip" data-shape="rect">สี่เหลี่ยม</button>
+            <button class="chip" data-shape="circle">วงกลม</button>
+            <button class="chip" data-shape="triangle">สามเหลี่ยม</button>
+            <button class="chip" data-shape="line">เส้นตรง</button>
+            <button class="chip" data-shape="arrow">ลูกศร</button>
+            <button class="chip" data-shape="frame">กรอบทอง</button>
+          </div>
+        </div>
+        <div class="sec">
+          <h3>สีรูปทรง</h3>
+          <div class="row"><label>สีพื้น</label><input type="color" id="shapeFill" value="#8B0000"><button class="chip" id="shapeNoFill" style="flex:1">ไม่มีสีพื้น</button></div>
+          <div class="row"><label>สีเส้นขอบ</label><input type="color" id="shapeStroke" value="#C9A84C"></div>
+          <div class="row"><label>หนาขอบ</label><input type="range" id="shapeStrokeW" min="0" max="30" value="0"><span class="val" id="shapeStrokeWVal">0</span></div>
+          <div class="row"><label>มุมโค้ง</label><input type="range" id="shapeRadius" min="0" max="120" value="0"><span class="val" id="shapeRadiusVal">0</span></div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL: text ===== -->
+      <div class="panel" id="panel-text">
+        <div class="sec">
+          <h3>ข้อความ</h3>
+          <button class="btn primary" id="addText" style="width:100%; justify-content:center; margin-bottom:10px">+ เพิ่มข้อความ</button>
+          <div class="row"><label>ฟอนต์</label>
+            <select id="textFont" style="flex:1">
+              <option value="Prompt">Prompt — หัวข้อ</option>
+              <option value="Kanit">Kanit — เด่น</option>
+              <option value="Sarabun">Sarabun — เนื้อหา</option>
+            </select>
+          </div>
+          <div class="row"><label>ขนาด</label><input type="range" id="textSize" min="12" max="220" value="56"><span class="val" id="textSizeVal">56</span></div>
+          <div class="row"><label>สีตัวอักษร</label><input type="color" id="textColor" value="#000000"></div>
+          <div class="grid3">
+            <button class="chip" data-tstyle="bold"><b>หนา</b></button>
+            <button class="chip" data-tstyle="italic"><i>เอียง</i></button>
+            <button class="chip" data-tstyle="shadow">มีเงา</button>
+          </div>
+          <div class="grid3" style="margin-top:6px">
+            <button class="chip" data-talign="left">ชิดซ้าย</button>
+            <button class="chip" data-talign="center">กลาง</button>
+            <button class="chip" data-talign="right">ชิดขวา</button>
+          </div>
+          <div class="hint">ดับเบิลคลิกข้อความบนงานเพื่อพิมพ์แก้ได้เลย</div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL: qr ===== -->
+      <div class="panel" id="panel-qr">
+        <div class="sec">
+          <h3>สร้าง QR Code</h3>
+          <textarea id="qrText" rows="2" style="width:100%; resize:vertical" placeholder="วางลิงก์หรือข้อความ เช่น https://tesrshop.com"></textarea>
+          <div class="row" style="margin-top:8px"><label>สี QR</label><input type="color" id="qrDark" value="#000000"></div>
+          <div class="row"><label>สีพื้น</label><input type="color" id="qrLight" value="#ffffff"><button class="chip" id="qrTransparent" style="flex:1">พื้นโปร่งใส</button></div>
+          <div class="row"><label>ความละเอียด</label>
+            <select id="qrLevel" style="flex:1">
+              <option value="M">มาตรฐาน (M)</option>
+              <option value="H" selected>สแกนทนสุด (H)</option>
+            </select>
+          </div>
+          <button class="btn" id="qrGen" style="width:100%; justify-content:center; margin:8px 0">สร้างตัวอย่าง</button>
+          <div id="qrPreview"><span style="color:#999; font-size:12px">ตัวอย่างจะแสดงที่นี่</span></div>
+          <div class="grid2">
+            <button class="btn primary" id="qrAdd" style="justify-content:center">วางลงชิ้นงาน</button>
+            <button class="btn" id="qrDownload" style="justify-content:center">ดาวน์โหลด PNG</button>
+          </div>
+          <div class="hint">แนะนำสี QR เข้มบนพื้นอ่อนเสมอ เพื่อให้ทุกเครื่องสแกนได้</div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL: templates ===== -->
+      <div class="panel" id="panel-template">
+        <div class="sec">
+          <h3>เทมเพลตแบรนด์ TESR</h3>
+          <div class="tpl" data-tpl="product">
+            <div class="thumb" style="background:#fff; color:#8B0000; border-bottom:2px solid #C9A84C">PRODUCT</div>
+            <div class="cap">ภาพสินค้า — พื้นขาว กรอบทอง โลโก้มุมขวา</div>
+          </div>
+          <div class="tpl" data-tpl="promo">
+            <div class="thumb" style="background:#000; color:#C9A84C">PROMO / DARK TECH</div>
+            <div class="cap">โพสต์โปรโมชัน — ดำ‑แดง‑ทอง แถบหัวข้อ</div>
+          </div>
+          <div class="tpl" data-tpl="course">
+            <div class="thumb" style="background:linear-gradient(135deg,#141416,#2a0303); color:#fff">COURSE COVER</div>
+            <div class="cap">ปกคอร์ส Academy — ชื่อคอร์ส + เส้นทอง</div>
+          </div>
+          <div class="hint">เทมเพลตจะล้างงานปัจจุบัน — บันทึกงานก่อนหากยังใช้อยู่</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- layers -->
+    <div id="layersBox">
+      <h3>เลเยอร์</h3>
+      <div id="layersList"><div class="empty">ยังไม่มีวัตถุในงาน</div></div>
+    </div>
+  </aside>
+</main>
+</div>
+
+<!-- export modal -->
+<div class="modal-bg" id="exportModal">
+  <div class="modal">
+    <h2>Export รูปภาพ</h2>
+    <div class="row"><label>ชื่อไฟล์</label><input id="expName" style="flex:1" value="tesr-image"></div>
+    <div class="row"><label>ชนิดไฟล์</label>
+      <select id="expFormat" style="flex:1">
+        <option value="png">PNG — คมชัด / พื้นโปร่งใสได้</option>
+        <option value="jpeg">JPG — ไฟล์เล็ก เหมาะลงเว็บ</option>
+        <option value="pdf">PDF — เอกสาร/ส่งโรงพิมพ์</option>
+        <option value="pptx">PowerPoint — เปิดใน PPT ได้ (GIF ขยับ)</option>
+        <option value="html">HTML Slideshow — เปิดพรีเซนต์ในเบราว์เซอร์ (GIF ขยับ)</option>
+        <option value="webm">วิดีโอ MP4/WebM — สไลด์ทุกหน้าเป็นคลิป (GIF ขยับ)</option>
+      </select>
+    </div>
+    <div class="row" id="expScaleRow"><label>ขนาด</label>
+      <select id="expScale" style="flex:1">
+        <option value="1">1× — เท่าชิ้นงาน</option>
+        <option value="2">2× — ความละเอียดสูง</option>
+        <option value="3">3× — งานพิมพ์</option>
+      </select>
+    </div>
+    <div class="row" id="expScopeRow">
+      <label>ขอบเขต</label>
+      <select id="expScope" style="flex:1">
+        <option value="cur">เฉพาะหน้านี้</option>
+        <option value="all" selected>ทุกหน้า</option>
+      </select>
+    </div>
+    <div class="row" id="expDurRow" style="display:none"><label>วินาที/หน้า</label><input type="number" id="expDur" value="3" min="1" max="30" style="flex:1"></div>
+    <div class="row" id="expQualityRow" style="display:none"><label>คุณภาพ JPG</label><input type="range" id="expQuality" min="50" max="100" value="90"><span class="val" id="expQualityVal">90</span></div>
+    <div class="actions">
+      <button class="btn" id="expCancel">ยกเลิก</button>
+      <button class="btn primary" id="expGo">ดาวน์โหลด</button>
+    </div>
+  </div>
+</div>
+
+<div id="ctxMenu"></div>
+<div id="toast"></div>
+<input type="file" id="fileInput" accept="image/*" multiple style="display:none">
+<input type="file" id="projInput" accept=".json,application/json" style="display:none">
+<div id="qrWork" style="position:absolute; left:-9999px; top:-9999px"></div>
+<script>
+/* =========================================================
+   TESR STUDIO — core
+   ========================================================= */
+fabric.textureSize = 4096;
+fabric.Object.prototype.transparentCorners = false;
+fabric.Object.prototype.cornerColor = '#C9A84C';
+fabric.Object.prototype.cornerStrokeColor = '#0B0B0D';
+fabric.Object.prototype.borderColor = '#C9A84C';
+fabric.Object.prototype.cornerSize = 9;
+fabric.Object.prototype.borderScaleFactor = 1.5;
+
+// serialize erased/baked canvas-backed images correctly
+const _imgToObject = fabric.Image.prototype.toObject;
+fabric.Image.prototype.toObject = function(props){
+  const o = _imgToObject.call(this, (props||[]).concat(['name','adj','bgColors','gifSrc']));
+  const el = this._originalElement;
+  if (el && el.toDataURL) o.src = el.toDataURL('image/png');
+  return o;
+};
+
+let DW = 1000, DH = 1000;          // design size
+let designMeta = { label:'สินค้า Shop — 1000×1000', phys:'สำหรับ tesrshop.com' };
+let zoom = 1;
+let bgTransparent = false;
+
+const canvas = new fabric.Canvas('c', {
+  preserveObjectStacking: true,
+  backgroundColor: '#ffffff',
+  selection: true,
+  stopContextMenu: true,
+  fireRightClick: false
+});
+
+const $ = id => document.getElementById(id);
+const holder = $('canvasHolder');
+const stage = $('stage');
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._tm); t._tm = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ---------- size & zoom ---------- */
+function updateSizeStatus(){
+  const p = designMeta.phys ? ` · ${designMeta.phys}` : '';
+  $('statusSize').textContent = `${designMeta.label} · ${DW}×${DH} px${p}`;
+}
+function setDesignSize(w, h, meta){
+  DW = w; DH = h;
+  if (meta) designMeta = meta;
+  applyZoom(zoom);
+  updateSizeStatus();
+  fitZoom();
+  snapshot();
+}
+function applyZoom(z){
+  zoom = Math.min(6, Math.max(0.05, z));
+  canvas.setDimensions({ width: DW*zoom, height: DH*zoom });
+  canvas.setZoom(zoom);
+  $('zoomLabel').textContent = Math.round(zoom*100) + '%';
+  canvas.requestRenderAll();
+}
+function fitZoom(){
+  const r = stage.getBoundingClientRect();
+  const z = Math.min((r.width-100)/DW, (r.height-120)/DH, 1.5);
+  applyZoom(z);
+}
+$('zoomIn').onclick  = () => applyZoom(zoom*1.2);
+$('zoomOut').onclick = () => applyZoom(zoom/1.2);
+$('zoomFit').onclick = fitZoom;
+stage.addEventListener('wheel', e => {
+  if (e.ctrlKey || e.metaKey){ e.preventDefault(); applyZoom(zoom * (e.deltaY < 0 ? 1.1 : 0.9)); }
+}, { passive:false });
+
+/* ขนาดงาน — พิกเซลตรง หรือขนาดจริง (ซม. × DPI) */
+const SIZE_GROUPS = [
+ { g:'ออนไลน์ / จอภาพ', items:[
+   { id:'shop',  label:'สินค้า Shop — 1000×1000', w:1000, h:1000, phys:'สำหรับ tesrshop.com' },
+   { id:'ig',    label:'โพสต์สี่เหลี่ยม — 1080×1080', w:1080, h:1080 },
+   { id:'fb',    label:'โพสต์ Facebook — 1200×630', w:1200, h:630 },
+   { id:'story', label:'Story — 1080×1920', w:1080, h:1920 },
+   { id:'slide', label:'สไลด์พรีเซนต์ 16:9 — 1280×720', w:1280, h:720, phys:'อัตราส่วนเท่าจอ TV/โปรเจกเตอร์' },
+   { id:'fhd',   label:'จอ TV/คอม Full HD — 1920×1080', w:1920, h:1080, phys:'เท่าจอ Full HD จริง พิกเซลต่อพิกเซล' },
+   { id:'uhd',   label:'จอ TV 4K — 3840×2160', w:3840, h:2160, phys:'เท่าจอ 4K จริง พิกเซลต่อพิกเซล' } ]},
+ { g:'งานพิมพ์ (ขนาดจริง)', items:[
+   { id:'card', label:'นามบัตร — 9×5.4 ซม.', cm:[9,5.4], dpi:300 },
+   { id:'a5',   label:'A5 แนวตั้ง — 14.8×21 ซม.', cm:[14.8,21], dpi:300 },
+   { id:'a4',   label:'A4 แนวตั้ง — 21×29.7 ซม.', cm:[21,29.7], dpi:300 },
+   { id:'a4l',  label:'A4 แนวนอน — 29.7×21 ซม.', cm:[29.7,21], dpi:300 },
+   { id:'a3',   label:'A3 แนวตั้ง — 29.7×42 ซม.', cm:[29.7,42], dpi:240 } ]},
+ { g:'ป้าย / ไวนิล / Backdrop (ขนาดจริง)', items:[
+   { id:'rollup', label:'Roll-up — 80×200 ซม.', cm:[80,200], dpi:50 },
+   { id:'v31',  label:'ไวนิล — 300×100 ซม.', cm:[300,100], dpi:34 },
+   { id:'v24',  label:'ไวนิล — 240×120 ซม.', cm:[240,120], dpi:42 },
+   { id:'bd',   label:'Backdrop เวที — 300×200 ซม.', cm:[300,200], dpi:34 } ]}
+];
+const CM_IN = 2.54;
+const cmToPx = (cm, dpi) => Math.round(cm/CM_IN*dpi);
+(function buildPresetSelect(){
+  const sel = $('presetSel');
+  SIZE_GROUPS.forEach(gr => {
+    const og = document.createElement('optgroup'); og.label = gr.g;
+    gr.items.forEach(it => {
+      const o = document.createElement('option');
+      o.value = it.id; o.textContent = it.label;
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+  const c = document.createElement('option');
+  c.value = 'custom'; c.textContent = 'กำหนดเอง… (px หรือ ซม.)';
+  sel.appendChild(c);
+})();
+function findPreset(id){ for (const g of SIZE_GROUPS) for (const it of g.items) if (it.id===id) return it; return null; }
+function applyPreset(it){
+  let w, h, phys = it.phys || '';
+  if (it.cm){
+    w = cmToPx(it.cm[0], it.dpi); h = cmToPx(it.cm[1], it.dpi);
+    phys = `ขนาดจริง ${it.cm[0]}×${it.cm[1]} ซม. @ ${it.dpi} DPI`;
+  } else { w = it.w; h = it.h; }
+  setDesignSize(w, h, { label: it.label, phys });
+}
+$('presetSel').onchange = e => {
+  if (e.target.value === 'custom'){ $('customSize').style.display = 'inline-flex'; return; }
+  $('customSize').style.display = 'none';
+  const it = findPreset(e.target.value);
+  if (it) applyPreset(it);
+};
+$('cUnit').onchange = e => $('cDpi').style.display = e.target.value==='cm' ? '' : 'none';
+$('applySize').onclick = () => {
+  const unit = $('cUnit').value;
+  let w = +$('cw').value||0, h = +$('ch').value||0, meta;
+  if (unit === 'cm'){
+    const dpi = +$('cDpi').value;
+    const pw = cmToPx(w, dpi), ph = cmToPx(h, dpi);
+    if (pw > 4096 || ph > 4096){ toast('ขนาดเกินขีดจำกัด 4096px — ลด DPI ลง (ป้ายใหญ่พิมพ์ที่ 50 DPI ก็คมพอ)'); return; }
+    if (pw < 20 || ph < 20){ toast('ขนาดเล็กเกินไป'); return; }
+    meta = { label:`กำหนดเอง — ${w}×${h} ซม.`, phys:`ขนาดจริง ${w}×${h} ซม. @ ${dpi} DPI` };
+    w = pw; h = ph;
+  } else {
+    w = Math.min(4096, Math.max(20, Math.round(w||1000)));
+    h = Math.min(4096, Math.max(20, Math.round(h||1000)));
+    meta = { label:`กำหนดเอง — ${w}×${h} px`, phys:'' };
+  }
+  setDesignSize(w, h, meta);
+};
+
+/* ---------- background ---------- */
+$('bgColor').oninput = e => {
+  bgTransparent = false; holder.classList.remove('transparent');
+  canvas.setBackgroundColor(e.target.value, () => canvas.requestRenderAll());
+  snapshotSoon();
+};
+$('bgTransparent').onclick = () => {
+  bgTransparent = !bgTransparent;
+  holder.classList.toggle('transparent', bgTransparent);
+  canvas.setBackgroundColor(bgTransparent ? '' : $('bgColor').value, () => canvas.requestRenderAll());
+  toast(bgTransparent ? 'พื้นหลังโปร่งใส — Export เป็น PNG' : 'กลับมาใช้สีพื้นหลัง');
+  snapshotSoon();
+};
+
+/* ---------- undo / redo ---------- */
+const HISTORY_MAX = 40;
+let undoStack = [], redoStack = [], restoring = false, snapTimer = null;
+
+function serialize(){
+  return JSON.stringify({ w: DW, h: DH, bgT: bgTransparent, meta: designMeta,
+    json: canvas.toJSON(['name','adj','bgColors','selectable','gifSrc']) });
+}
+function snapshot(){
+  if (restoring) return;
+  const s = serialize();
+  if (undoStack.length && undoStack[undoStack.length-1] === s) return;
+  undoStack.push(s);
+  if (undoStack.length > HISTORY_MAX) undoStack.shift();
+  redoStack = [];
+  updateHistoryBtns();
+}
+function snapshotSoon(){ clearTimeout(snapTimer); snapTimer = setTimeout(snapshot, 350); }
+function restore(s){
+  restoring = true;
+  const d = JSON.parse(s);
+  DW = d.w; DH = d.h; bgTransparent = d.bgT;
+  designMeta = d.meta || { label:`${d.w}×${d.h} px`, phys:'' };
+  holder.classList.toggle('transparent', bgTransparent);
+  canvas.loadFromJSON(d.json, () => {
+    applyZoom(zoom);
+    updateSizeStatus();
+    canvas.requestRenderAll();
+    refreshLayers();
+    restoring = false;
+  });
+}
+function undo(){
+  if (undoStack.length < 2) return;
+  redoStack.push(undoStack.pop());
+  restore(undoStack[undoStack.length-1]);
+  updateHistoryBtns();
+}
+function redo(){
+  if (!redoStack.length) return;
+  const s = redoStack.pop();
+  undoStack.push(s);
+  restore(s);
+  updateHistoryBtns();
+}
+function updateHistoryBtns(){
+  $('undoBtn').disabled = undoStack.length < 2;
+  $('redoBtn').disabled = !redoStack.length;
+}
+$('undoBtn').onclick = undo;
+$('redoBtn').onclick = redo;
+
+canvas.on('object:added',   () => { snapshotSoon(); refreshLayers(); });
+canvas.on('object:removed', () => { snapshotSoon(); refreshLayers(); });
+canvas.on('object:modified',() => { snapshotSoon(); refreshLayers(); });
+
+/* ---------- pages ---------- */
+let pages = [];
+let curPage = 0;
+function blankPage(){
+  return JSON.stringify({ w:DW, h:DH, bgT:false, meta:designMeta,
+    json:{ version:'5.3.1', objects:[], background:'#ffffff' } });
+}
+function saveCur(){ pages[curPage] = serialize(); }
+function resetHistoryTo(s){ undoStack = [s]; redoStack = []; updateHistoryBtns(); }
+function updatePageBar(){
+  $('pgLabel').textContent = `หน้า ${curPage+1}/${pages.length}`;
+  $('pgPrev').disabled = curPage === 0;
+  $('pgNext').disabled = curPage === pages.length-1;
+  $('pgDel').disabled = pages.length < 2;
+}
+function gotoPage(i, skipSave){
+  if (i < 0 || i >= pages.length) return;
+  if (!skipSave) saveCur();
+  curPage = i;
+  restore(pages[i]);
+  resetHistoryTo(pages[i]);
+  updatePageBar();
+}
+$('pgPrev').onclick = () => gotoPage(curPage-1);
+$('pgNext').onclick = () => gotoPage(curPage+1);
+$('pgAdd').onclick = () => { saveCur(); pages.splice(curPage+1, 0, blankPage()); gotoPage(curPage+1, true); toast('เพิ่มหน้าใหม่ ขนาดเท่าหน้าเดิม'); };
+$('pgDup').onclick = () => { saveCur(); pages.splice(curPage+1, 0, pages[curPage]); gotoPage(curPage+1, true); toast('ทำสำเนาหน้าแล้ว'); };
+$('pgDel').onclick = () => {
+  if (pages.length < 2) return;
+  pages.splice(curPage, 1);
+  gotoPage(Math.min(curPage, pages.length-1), true);
+  toast('ลบหน้าแล้ว');
+};
+
+/* ---------- tools ---------- */
+let tool = 'select';
+let activeEraseImage = null;
+const statusText = {
+  select:  '<b>เลือก</b> — คลิกวัตถุเพื่อย้าย/ย่อขยาย · ดับเบิลคลิกข้อความเพื่อแก้ · ปุ่ม Delete เพื่อลบ',
+  upload:  '<b>รูปภาพ</b> — เลือกไฟล์ หรือลากรูปมาวางบนพื้นที่งานได้เลย',
+  image:   '<b>ปรับภาพ</b> — เลือกรูปก่อน แล้วปรับสี/ฟิลเตอร์/ลบพื้นหลังจากแผงขวา',
+  erase:   '<b>ยางลบ</b> — เลือกรูปก่อน แล้วลากเมาส์ลบส่วนที่ไม่ต้องการ',
+  draw:    '<b>วาด</b> — ลากเมาส์วาดบนชิ้นงานได้เลย',
+  shape:   '<b>รูปทรง</b> — กดปุ่มรูปทรงจากแผงขวาเพื่อเพิ่มลงงาน',
+  text:    '<b>ข้อความ</b> — กด "+ เพิ่มข้อความ" แล้วดับเบิลคลิกเพื่อพิมพ์',
+  qr:      '<b>QR Code</b> — ใส่ลิงก์ กดสร้างตัวอย่าง แล้ววางลงชิ้นงาน',
+  template:'<b>เทมเพลต</b> — เลือกเทมเพลตแบรนด์ TESR เพื่อเริ่มงานเร็ว'
+};
+function setTool(t){
+  tool = t;
+  document.querySelectorAll('.tool').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('show'));
+  const panel = $('panel-' + t);
+  if (panel) panel.classList.add('show');
+  $('statusTool').innerHTML = statusText[t] || '';
+
+  canvas.isDrawingMode = (t === 'draw');
+  if (t === 'draw') configureBrush();
+
+  canvas.selection = (t === 'select');
+  canvas.skipTargetFind = false;
+  canvas.defaultCursor = 'default';
+
+  if (t === 'erase'){
+    const o = canvas.getActiveObject();
+    activeEraseImage = (o && o.type === 'image') ? o : null;
+    canvas.skipTargetFind = true;
+    canvas.discardActiveObject();
+    canvas.defaultCursor = 'crosshair';
+    if (!activeEraseImage) toast('เลือกรูปในโหมด "เลือก" ก่อน แล้วกลับมาที่ยางลบ');
+  } else {
+    activeEraseImage = null;
+  }
+  if (t === 'image' && !getActiveImage()) toast('คลิกเลือกรูปที่จะปรับก่อน');
+  if (t === 'upload') $('fileInput').click();
+  canvas.requestRenderAll();
+}
+document.querySelectorAll('.tool').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+
+function getActiveImage(){
+  const o = canvas.getActiveObject();
+  return (o && o.type === 'image') ? o : null;
+}
+
+/* ---------- upload ---------- */
+$('fileInput').onchange = e => { [...e.target.files].forEach(addImageFile); e.target.value = ''; setTool('select'); };
+function addImageFile(file){
+  if (!file.type.startsWith('image/')) return;
+  const isGif = file.type === 'image/gif';
+  const rd = new FileReader();
+  rd.onload = () => addImageURL(rd.result, file.name, isGif);
+  rd.readAsDataURL(file);
+}
+function addImageURL(url, name, isGif){
+  fabric.Image.fromURL(url, img => {
+    const s = Math.min((DW*0.82)/img.width, (DH*0.82)/img.height, 1);
+    img.set({ left: DW/2, top: DH/2, originX:'center', originY:'center',
+              scaleX:s, scaleY:s,
+              name: (isGif ? 'GIF: ' : 'รูป: ') + (name ? name.replace(/\.[^.]+$/,'') : 'รูปภาพ') });
+    img.adj = defaultAdj(); img.bgColors = [];
+    if (isGif){ img.gifSrc = url; toast('GIF จะขยับจริงตอน Export เป็น HTML/PowerPoint — บนหน้าจัดวางแสดงเฟรมแรก'); }
+    canvas.add(img); canvas.setActiveObject(img);
+    canvas.requestRenderAll();
+    setTool('image');
+  }, { crossOrigin:'anonymous' });
+}
+['dragenter','dragover'].forEach(ev => stage.addEventListener(ev, e => { e.preventDefault(); stage.classList.add('dragover'); }));
+['dragleave','drop'].forEach(ev => stage.addEventListener(ev, e => { e.preventDefault(); if(ev==='dragleave' && e.target!==stage) return; stage.classList.remove('dragover'); }));
+stage.addEventListener('drop', e => { [...e.dataTransfer.files].forEach(addImageFile); });
+
+/* ---------- selection → panels ---------- */
+function onSelChange(){
+  const o = canvas.getActiveObject();
+  $('secArrange').style.display = o ? 'block' : 'none';
+  if (o){
+    $('objOpacity').value = Math.round((o.opacity ?? 1) * 100);
+    $('objOpacityVal').textContent = $('objOpacity').value;
+    if (o.type === 'image'){ syncImagePanel(o); if (tool!=='erase' && tool!=='draw') setToolPanelOnly('image'); }
+    if (o.type === 'i-text') setToolPanelOnly('text');
+  }
+  refreshLayers();
+}
+function setToolPanelOnly(t){
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('show'));
+  const p = $('panel-'+t); if (p) p.classList.add('show');
+}
+canvas.on('selection:created', onSelChange);
+canvas.on('selection:updated', onSelChange);
+canvas.on('selection:cleared', () => { $('secArrange').style.display='none'; refreshLayers(); });
+
+/* ---------- arrange ---------- */
+document.querySelectorAll('[data-arr]').forEach(b => b.onclick = () => {
+  const o = canvas.getActiveObject(); if (!o) return;
+  switch(b.dataset.arr){
+    case 'front': canvas.bringToFront(o); break;
+    case 'back':  canvas.sendToBack(o); break;
+    case 'center': o.set({ left: DW/2, top: DH/2, originX:'center', originY:'center' }); o.setCoords(); break;
+    case 'flipH': o.set('flipX', !o.flipX); break;
+    case 'flipV': o.set('flipY', !o.flipY); break;
+    case 'dup':
+      o.clone(c => {
+        c.set({ left:(o.left||0)+24, top:(o.top||0)+24, name:(o.name||'วัตถุ')+' (สำเนา)' });
+        if (o.adj) c.adj = JSON.parse(JSON.stringify(o.adj));
+        if (o.bgColors) c.bgColors = JSON.parse(JSON.stringify(o.bgColors));
+        canvas.add(c); canvas.setActiveObject(c);
+        if (o.gifSrc) c.gifSrc = o.gifSrc;
+      }, ['name','adj','bgColors','gifSrc']);
+      break;
+  }
+  canvas.requestRenderAll(); snapshotSoon();
+});
+$('objOpacity').oninput = e => {
+  const o = canvas.getActiveObject(); if (!o) return;
+  o.set('opacity', +e.target.value/100);
+  $('objOpacityVal').textContent = e.target.value;
+  canvas.requestRenderAll(); snapshotSoon();
+};
+$('delObj').onclick = deleteActive;
+function deleteActive(){
+  const objs = canvas.getActiveObjects();
+  if (!objs.length) return;
+  canvas.discardActiveObject();
+  objs.forEach(o => canvas.remove(o));
+  canvas.requestRenderAll();
+}
+
+/* ---------- keyboard ---------- */
+document.addEventListener('keydown', e => {
+  const ctrl = e.ctrlKey || e.metaKey;
+  const key = e.key.toLowerCase();
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  const editingText = canvas.getActiveObject()?.isEditing;
+  if (ctrl && key==='z' && !typing){ e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (ctrl && key==='y' && !typing){ e.preventDefault(); redo(); return; }
+  if (ctrl && key==='s'){ e.preventDefault(); if(!typing) $('saveProj').click(); return; }
+  if (typing || editingText) return;
+
+  if (e.key === 'Delete' || e.key === 'Backspace'){ e.preventDefault(); deleteActive(); return; }
+  if (e.key === 'Escape'){ canvas.discardActiveObject(); canvas.requestRenderAll(); hideCtx(); return; }
+
+  if (ctrl && key==='c'){ if (copySel()) e.preventDefault(); return; }
+  if (ctrl && key==='x'){ if (copySel()){ deleteActive(); e.preventDefault(); } return; }
+  /* Ctrl+V จัดการผ่าน event 'paste' เพื่อรองรับรูปจากคลิปบอร์ดของระบบด้วย */
+  if (ctrl && key==='d'){ e.preventDefault(); document.querySelector('[data-arr=dup]').click(); return; }
+  if (ctrl && key==='a'){ e.preventDefault(); selectAll(); return; }
+  if (ctrl && key==='g'){ e.preventDefault(); e.shiftKey ? ungroupSel() : groupSel(); return; }
+  if (ctrl && key==='e'){ e.preventDefault(); $('exportBtn').click(); return; }
+
+  if (e.key.startsWith('Arrow')){
+    const o = canvas.getActiveObject(); if (!o) return;
+    const d = e.shiftKey ? 10 : 1;
+    if (e.key==='ArrowLeft')  o.left -= d;
+    if (e.key==='ArrowRight') o.left += d;
+    if (e.key==='ArrowUp')    o.top  -= d;
+    if (e.key==='ArrowDown')  o.top  += d;
+    o.setCoords(); canvas.requestRenderAll(); snapshotSoon();
+    e.preventDefault(); return;
+  }
+
+  if (!ctrl && key==='v') setTool('select');
+  if (!ctrl && key==='b') setTool('draw');
+  if (!ctrl && key==='t') setTool('text');
+});
+
+/* ---------- clipboard: copy / cut / paste (รวมรูปจากนอกโปรแกรม) ---------- */
+let _clip = null;
+function copySel(){
+  const a = canvas.getActiveObject(); if (!a) return false;
+  a.clone(c => { _clip = c; }, ['name','adj','bgColors','gifSrc']);
+  try{  // best-effort: ส่ง PNG เข้าคลิปบอร์ดระบบ เอาไปวางใน LINE/PowerPoint ได้
+    const url = a.toDataURL({ format:'png', multiplier:2 });
+    fetch(url).then(r=>r.blob())
+      .then(b=>navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]))
+      .catch(()=>{});
+  }catch(err){}
+  return true;
+}
+function pasteClip(){
+  if (!_clip) return false;
+  _clip.clone(c => {
+    canvas.discardActiveObject();
+    c.set({ left:(c.left||0)+24, top:(c.top||0)+24, evented:true });
+    if (c.type === 'activeSelection'){
+      c.canvas = canvas;
+      c.forEachObject(o => canvas.add(o));
+      c.setCoords();
+    } else canvas.add(c);
+    canvas.setActiveObject(c);
+    canvas.requestRenderAll();
+  }, ['name','adj','bgColors','gifSrc']);
+  return true;
+}
+document.addEventListener('paste', e => {
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if (typing || canvas.getActiveObject()?.isEditing) return;
+  const items = e.clipboardData?.items || [];
+  for (const it of items){
+    if (it.type.startsWith('image/')){
+      const f = it.getAsFile();
+      if (f){ addImageFile(f); toast('วางรูปจากคลิปบอร์ดแล้ว'); e.preventDefault(); return; }
+    }
+  }
+  if (_clip){ pasteClip(); e.preventDefault(); return; }
+  const txt = e.clipboardData?.getData('text/plain');
+  if (txt && txt.trim()){
+    const t = new fabric.IText(txt.trim(), { left: DW/2, top: DH/2, originX:'center', originY:'center',
+      fontFamily: $('textFont').value, fontSize: +$('textSize').value, fill: $('textColor').value, name:'ข้อความ' });
+    canvas.add(t); canvas.setActiveObject(t); canvas.requestRenderAll();
+    e.preventDefault();
+  }
+});
+function selectAll(){
+  const objs = canvas.getObjects().filter(o => o.selectable !== false && o.visible !== false);
+  if (!objs.length) return;
+  canvas.discardActiveObject();
+  const sel = new fabric.ActiveSelection(objs, { canvas });
+  canvas.setActiveObject(sel);
+  canvas.requestRenderAll();
+}
+function groupSel(){
+  const a = canvas.getActiveObject();
+  if (a && a.type === 'activeSelection'){
+    const g = a.toGroup(); g.set('name','กลุ่ม');
+    canvas.requestRenderAll(); refreshLayers(); snapshotSoon();
+  } else toast('ลากคลุมหรือ Shift+คลิก เลือกหลายชิ้นก่อน แล้วกด Ctrl+G');
+}
+function ungroupSel(){
+  const a = canvas.getActiveObject();
+  if (a && a.type === 'group'){
+    a.toActiveSelection();
+    canvas.requestRenderAll(); refreshLayers(); snapshotSoon();
+  }
+}
+
+/* ---------- right-click context menu ---------- */
+const ctxMenu = $('ctxMenu');
+function hideCtx(){ ctxMenu.style.display = 'none'; }
+document.addEventListener('click', hideCtx);
+stage.addEventListener('scroll', hideCtx);
+function showCtx(x, y, items){
+  ctxMenu.innerHTML = '';
+  items.forEach(it => {
+    if (it === '-'){ const d = document.createElement('div'); d.className = 'cdiv'; ctxMenu.appendChild(d); return; }
+    const b = document.createElement('div');
+    b.className = 'ci' + (it.disabled ? ' dis' : '');
+    b.innerHTML = `<span>${it.label}</span>${it.k ? `<span class="kk">${it.k}</span>` : ''}`;
+    if (!it.disabled) b.onclick = ev => { ev.stopPropagation(); hideCtx(); it.fn(); };
+    ctxMenu.appendChild(b);
+  });
+  ctxMenu.style.display = 'block';
+  const r = ctxMenu.getBoundingClientRect();
+  ctxMenu.style.left = Math.min(x, innerWidth  - r.width  - 8) + 'px';
+  ctxMenu.style.top  = Math.min(y, innerHeight - r.height - 8) + 'px';
+}
+canvas.upperCanvasEl.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const target = canvas.findTarget(e, false);
+  if (target && !canvas.getActiveObjects().includes(target)){
+    canvas.setActiveObject(target); canvas.requestRenderAll();
+  }
+  const o = canvas.getActiveObject();
+  const items = [];
+  if (o){
+    items.push(
+      { label:'คัดลอก', k:'Ctrl+C', fn:copySel },
+      { label:'ตัด', k:'Ctrl+X', fn:()=>{ copySel(); deleteActive(); } },
+      { label:'วาง', k:'Ctrl+V', fn:pasteClip, disabled:!_clip },
+      { label:'ทำสำเนา', k:'Ctrl+D', fn:()=>document.querySelector('[data-arr=dup]').click() },
+      '-',
+      { label:'มาหน้าสุด', fn:()=>{ canvas.bringToFront(o); canvas.requestRenderAll(); refreshLayers(); snapshotSoon(); } },
+      { label:'ไปหลังสุด', fn:()=>{ canvas.sendToBack(o); canvas.requestRenderAll(); refreshLayers(); snapshotSoon(); } },
+      { label:'จัดกึ่งกลางงาน', fn:()=>{ o.set({ left:DW/2, top:DH/2, originX:'center', originY:'center' }); o.setCoords(); canvas.requestRenderAll(); snapshotSoon(); } },
+      '-');
+    if (o.type === 'activeSelection') items.push({ label:'รวมกลุ่ม', k:'Ctrl+G', fn:groupSel });
+    if (o.type === 'group') items.push({ label:'แยกกลุ่ม', k:'Ctrl+Shift+G', fn:ungroupSel });
+    items.push(
+      { label: o.lockMovementX ? 'ปลดล็อกตำแหน่ง' : 'ล็อกตำแหน่ง',
+        fn:()=>{ const l = !o.lockMovementX; o.lockMovementX = o.lockMovementY = l; toast(l ? 'ล็อกตำแหน่งแล้ว' : 'ปลดล็อกแล้ว'); } },
+      { label:'ลบ', k:'Del', fn:deleteActive });
+  } else {
+    items.push(
+      { label:'วาง', k:'Ctrl+V', fn:pasteClip, disabled:!_clip },
+      { label:'เลือกทั้งหมด', k:'Ctrl+A', fn:selectAll },
+      '-',
+      { label:'เพิ่มข้อความ', k:'T', fn:()=>{ setTool('text'); $('addText').click(); } },
+      { label:'เพิ่มหน้าใหม่', fn:()=>$('pgAdd').click() });
+  }
+  showCtx(e.clientX, e.clientY, items);
+});
+
+/* ---------- brand swatches ---------- */
+document.querySelectorAll('#brandSwatches .sw').forEach(sw => sw.onclick = () => {
+  const c = sw.dataset.c;
+  const o = canvas.getActiveObject();
+  if (!o){ $('shapeFill').value = c; $('drawColor').value = c; $('textColor').value = c; toast('ตั้งเป็นสีเริ่มต้นแล้ว: '+c); return; }
+  if (o.type === 'i-text') o.set('fill', c);
+  else if (o.type === 'image') { toast('รูปภาพเปลี่ยนสีด้วยแผง "ปรับภาพ"'); return; }
+  else if (o.fill && o.fill !== '' && o.fill !== 'transparent') o.set('fill', c);
+  else o.set('stroke', c);
+  canvas.requestRenderAll(); snapshotSoon();
+});
+/* =========================================================
+   image adjustments & background removal
+   ========================================================= */
+function defaultAdj(){ return { brightness:0, contrast:0, saturation:0, hue:0, blur:0, sharpen:false, sepia:false, invert:false, gray:false, tol:0.18 }; }
+
+function rebuildFilters(img){
+  const a = img.adj || (img.adj = defaultAdj());
+  const F = fabric.Image.filters;
+  const f = [];
+  (img.bgColors || []).forEach(bc => f.push(new F.RemoveColor({ color: bc.color, distance: bc.distance })));
+  if (a.gray)   f.push(new F.Grayscale());
+  if (a.sepia)  f.push(new F.Sepia());
+  if (a.invert) f.push(new F.Invert());
+  if (a.brightness) f.push(new F.Brightness({ brightness: a.brightness/100 }));
+  if (a.contrast)   f.push(new F.Contrast({ contrast: a.contrast/100 }));
+  if (a.saturation) f.push(new F.Saturation({ saturation: a.saturation/100 }));
+  if (a.hue)        f.push(new F.HueRotation({ rotation: a.hue*Math.PI/180 }));
+  if (a.blur)       f.push(new F.Blur({ blur: a.blur/100 }));
+  if (a.sharpen)    f.push(new F.Convolute({ matrix:[0,-1,0,-1,5,-1,0,-1,0] }));
+  img.filters = f;
+  img.applyFilters();
+  canvas.requestRenderAll();
+  snapshotSoon();
+}
+function syncImagePanel(img){
+  const a = img.adj || defaultAdj();
+  const map = { fBrightness:'brightness', fContrast:'contrast', fSaturation:'saturation', fHue:'hue', fBlur:'blur' };
+  for (const id in map){ const el = $(id); el.value = a[map[id]]; el.nextElementSibling.textContent = a[map[id]]; }
+  $('tSharpen').classList.toggle('on', !!a.sharpen);
+  $('tSepia').classList.toggle('on', !!a.sepia);
+  $('tInvert').classList.toggle('on', !!a.invert);
+}
+['fBrightness','fContrast','fSaturation','fHue','fBlur'].forEach(id => {
+  $(id).oninput = e => {
+    const img = getActiveImage(); if (!img){ toast('เลือกรูปก่อน'); return; }
+    const key = { fBrightness:'brightness', fContrast:'contrast', fSaturation:'saturation', fHue:'hue', fBlur:'blur' }[id];
+    img.adj = img.adj || defaultAdj();
+    img.adj[key] = +e.target.value;
+    e.target.nextElementSibling.textContent = e.target.value;
+    rebuildFilters(img);
+  };
+});
+[['tSharpen','sharpen'],['tSepia','sepia'],['tInvert','invert']].forEach(([id,key]) => {
+  $(id).onclick = () => {
+    const img = getActiveImage(); if (!img){ toast('เลือกรูปก่อน'); return; }
+    img.adj = img.adj || defaultAdj();
+    img.adj[key] = !img.adj[key];
+    $(id).classList.toggle('on', img.adj[key]);
+    rebuildFilters(img);
+  };
+});
+$('fReset').onclick = () => {
+  const img = getActiveImage(); if (!img) return;
+  const keep = img.adj?.tol ?? 0.18;
+  img.adj = defaultAdj(); img.adj.tol = keep;
+  syncImagePanel(img); rebuildFilters(img);
+};
+
+const PRESETS = {
+  none:   {},
+  studio: { brightness:8,  contrast:14, saturation:6 },
+  punch:  { brightness:2,  contrast:22, saturation:32 },
+  warm:   { brightness:5,  contrast:6,  saturation:10, hue:12 },
+  cool:   { brightness:4,  contrast:8,  saturation:4,  hue:-14 },
+  bw:     { contrast:12, gray:true }
+};
+document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+  const img = getActiveImage(); if (!img){ toast('เลือกรูปก่อน'); return; }
+  const keepBg = img.bgColors, keepTol = img.adj?.tol ?? 0.18;
+  img.adj = Object.assign(defaultAdj(), PRESETS[b.dataset.preset]);
+  img.adj.tol = keepTol; img.bgColors = keepBg;
+  syncImagePanel(img); rebuildFilters(img);
+  document.querySelectorAll('[data-preset]').forEach(x => x.classList.toggle('on', x===b));
+});
+
+/* --- magic background removal (color pick) --- */
+let magicMode = false;
+$('magicPick').onclick = () => {
+  const img = getActiveImage(); if (!img){ toast('เลือกรูปก่อน'); return; }
+  magicMode = true;
+  canvas.defaultCursor = 'crosshair';
+  toast('คลิกจุดสีพื้นหลังบนรูปได้เลย — จิ้มซ้ำได้หลายจุด');
+};
+$('magicTol').oninput = e => {
+  $('magicTolVal').textContent = e.target.value;
+  const img = getActiveImage(); if (!img) return;
+  img.adj = img.adj || defaultAdj();
+  img.adj.tol = +e.target.value/100;
+  if (img.bgColors?.length){
+    img.bgColors[img.bgColors.length-1].distance = img.adj.tol;
+    rebuildFilters(img);
+  }
+};
+$('magicUndo').onclick = () => {
+  const img = getActiveImage(); if (!img || !img.bgColors?.length) return;
+  img.bgColors.pop(); rebuildFilters(img);
+};
+$('magicReset').onclick = () => {
+  const img = getActiveImage(); if (!img) return;
+  img.bgColors = []; rebuildFilters(img);
+  toast('คืนพื้นหลังของรูปแล้ว');
+};
+function imageLocalPoint(img, pointer){
+  const lp = img.toLocalPoint(new fabric.Point(pointer.x, pointer.y), 'left', 'top');
+  let x = lp.x / img.scaleX, y = lp.y / img.scaleY;
+  if (img.flipX) x = img.width - x;
+  if (img.flipY) y = img.height - y;
+  return { x, y };
+}
+function pickColorFromImage(img, pointer){
+  const p = imageLocalPoint(img, pointer);
+  const el = img._originalElement;
+  if (!el || p.x<0 || p.y<0 || p.x>=img.width || p.y>=img.height) return null;
+  const t = document.createElement('canvas'); t.width = 1; t.height = 1;
+  const cx = t.getContext('2d', { willReadFrequently:true });
+  cx.drawImage(el, Math.floor(p.x), Math.floor(p.y), 1, 1, 0, 0, 1, 1);
+  const d = cx.getImageData(0,0,1,1).data;
+  return '#' + [d[0],d[1],d[2]].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+canvas.on('mouse:down', opt => {
+  if (!magicMode) return;
+  const img = getActiveImage();
+  const target = (opt.target && opt.target.type==='image') ? opt.target : img;
+  if (!target) return;
+  const color = pickColorFromImage(target, canvas.getPointer(opt.e));
+  if (!color){ toast('จิ้มบนตัวรูปเท่านั้น'); return; }
+  target.bgColors = target.bgColors || [];
+  target.bgColors.push({ color, distance: (target.adj?.tol ?? 0.18) });
+  canvas.setActiveObject(target);
+  rebuildFilters(target);
+  toast('ลบสี ' + color + ' แล้ว — จิ้มเพิ่มได้ หรือปรับ "ความไว"');
+});
+canvas.on('mouse:down', () => { /* keep magicMode until tool changes */ });
+document.addEventListener('keyup', e => { if (e.key === 'Escape'){ magicMode=false; canvas.defaultCursor='default'; } });
+
+/* =========================================================
+   AI background removal (@imgly/background-removal — isnet)
+   runs fully in-browser; model cached by the browser after first load
+   ========================================================= */
+let _imglyMod = null;
+function loadImgly(){
+  if (!_imglyMod) _imglyMod = import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1/dist/browser.mjs');
+  return _imglyMod;
+}
+$('aiRemove').onclick = async () => {
+  const img = getActiveImage();
+  if (!img){ toast('คลิกเลือกรูปก่อน แล้วกดปุ่มนี้อีกครั้ง'); return; }
+  const btn = $('aiRemove');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  try{
+    btn.textContent = 'กำลังโหลดโมเดล AI…';
+    const mod = await loadImgly();
+    const removeBackground = mod.removeBackground || mod.default;
+
+    // ส่งพิกเซลต้นฉบับให้ AI (การปรับสีของผู้ใช้จะถูกใส่กลับหลังตัดเสร็จ)
+    const el = img._originalElement;
+    const sw = el.width || el.naturalWidth, sh = el.height || el.naturalHeight;
+    const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+    c.getContext('2d').drawImage(el, 0, 0);
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+
+    btn.textContent = 'AI กำลังตัดพื้นหลัง…';
+    const out = await removeBackground(blob, {
+      progress: (key, cur, tot) => {
+        if (key && key.startsWith('fetch') && tot) btn.textContent = `โหลดโมเดล AI ${Math.round(cur/tot*100)}%`;
+        else btn.textContent = 'AI กำลังตัดพื้นหลัง…';
+      }
+    });
+
+    const url = URL.createObjectURL(out);
+    await new Promise((res, rej) => {
+      const ni = new Image();
+      ni.onload = () => {
+        const nc = document.createElement('canvas'); nc.width = ni.width; nc.height = ni.height;
+        nc.getContext('2d').drawImage(ni, 0, 0);
+        img.setElement(nc);
+        img.bgColors = [];              // ล้างโหมดจิ้มสีเดิม
+        rebuildFilters(img);            // ใส่การปรับสีของผู้ใช้กลับบนรูปที่ตัดแล้ว
+        URL.revokeObjectURL(url);
+        res();
+      };
+      ni.onerror = rej;
+      ni.src = url;
+    });
+    canvas.requestRenderAll();
+    snapshotSoon();
+    toast('ตัดพื้นหลังด้วย AI สำเร็จ — เก็บขอบละเอียดเพิ่มได้ด้วยยางลบ');
+  } catch(err){
+    console.error('AI remove failed:', err);
+    toast('AI ใช้ไม่ได้ตอนนี้ — ต้องออนไลน์ครั้งแรกเพื่อโหลดโมเดล ระหว่างนี้ใช้โหมดจิ้มสีแทนได้');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+};
+
+/* =========================================================
+   manual eraser (destination-out on source pixels)
+   ========================================================= */
+let erasing = false, lastPt = null;
+$('eraseSize').oninput = e => $('eraseSizeVal').textContent = e.target.value;
+
+function bakeImage(img){
+  // burn current filters into pixels so erasing works on what you see
+  const src = img._element || img._originalElement;
+  const cnv = document.createElement('canvas');
+  cnv.width = src.width; cnv.height = src.height;
+  cnv.getContext('2d').drawImage(src, 0, 0);
+  img.setElement(cnv);
+  img.filters = []; img.bgColors = [];
+  const keep = img.adj?.tol ?? 0.18;
+  img.adj = defaultAdj(); img.adj.tol = keep;
+  img.applyFilters();
+}
+function eraseStroke(img, from, to, size){
+  const el = img._originalElement;
+  if (!el || !el.getContext) return;
+  const ctx = el.getContext('2d');
+  const a = imageLocalPoint(img, from), b = imageLocalPoint(img, to);
+  const scale = (Math.abs(img.scaleX)+Math.abs(img.scaleY))/2 || 1;
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.fillStyle = 'rgba(0,0,0,1)';
+  ctx.lineWidth = size/scale; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  ctx.beginPath(); ctx.arc(b.x, b.y, (size/scale)/2, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  img.dirty = true;
+  if (img._element !== el) img.applyFilters();
+  canvas.requestRenderAll();
+}
+canvas.on('mouse:down', opt => {
+  if (tool !== 'erase' || !activeEraseImage) return;
+  bakeOnce();
+  erasing = true; lastPt = canvas.getPointer(opt.e);
+  eraseStroke(activeEraseImage, lastPt, lastPt, +$('eraseSize').value);
+});
+canvas.on('mouse:move', opt => {
+  if (!erasing || tool !== 'erase' || !activeEraseImage) return;
+  const p = canvas.getPointer(opt.e);
+  eraseStroke(activeEraseImage, lastPt, p, +$('eraseSize').value);
+  lastPt = p;
+});
+canvas.on('mouse:up', () => { if (erasing){ erasing = false; snapshotSoon(); } });
+let bakedFor = null;
+function bakeOnce(){
+  if (bakedFor !== activeEraseImage || !(activeEraseImage._originalElement||{}).getContext){
+    bakeImage(activeEraseImage); bakedFor = activeEraseImage;
+  }
+}
+
+/* =========================================================
+   drawing
+   ========================================================= */
+let brushKind = 'pencil';
+function configureBrush(){
+  const b = new fabric.PencilBrush(canvas);
+  const col = $('drawColor').value;
+  const op = +$('drawOpacity').value/100;
+  const r = parseInt(col.slice(1,3),16), g = parseInt(col.slice(3,5),16), bl = parseInt(col.slice(5,7),16);
+  b.color = `rgba(${r},${g},${bl},${brushKind==='marker' ? Math.min(op,0.45) : op})`;
+  b.width = +$('drawSize').value * (brushKind==='marker' ? 2.2 : 1);
+  b.strokeLineCap = brushKind==='marker' ? 'square' : 'round';
+  canvas.freeDrawingBrush = b;
+}
+['drawColor','drawSize','drawOpacity'].forEach(id => $(id).oninput = e => {
+  if (id==='drawSize') $('drawSizeVal').textContent = e.target.value;
+  if (id==='drawOpacity') $('drawOpacityVal').textContent = e.target.value;
+  if (canvas.isDrawingMode) configureBrush();
+});
+document.querySelectorAll('[data-brush]').forEach(b => b.onclick = () => {
+  brushKind = b.dataset.brush;
+  document.querySelectorAll('[data-brush]').forEach(x => x.classList.toggle('on', x===b));
+  if (canvas.isDrawingMode) configureBrush();
+});
+canvas.on('path:created', e => { e.path.set('name','เส้นวาด'); });
+
+/* =========================================================
+   shapes
+   ========================================================= */
+function shapeStyle(){
+  return {
+    fill: $('shapeFill').dataset.none ? '' : $('shapeFill').value,
+    stroke: $('shapeStroke').value,
+    strokeWidth: +$('shapeStrokeW').value,
+    strokeUniform: true
+  };
+}
+document.querySelectorAll('[data-shape]').forEach(b => b.onclick = () => {
+  const st = shapeStyle();
+  const cx = DW/2, cy = DH/2;
+  let o = null;
+  switch(b.dataset.shape){
+    case 'rect':
+      o = new fabric.Rect({ ...st, width: DW*0.34, height: DH*0.24, rx:+$('shapeRadius').value, ry:+$('shapeRadius').value, name:'สี่เหลี่ยม' }); break;
+    case 'circle':
+      o = new fabric.Circle({ ...st, radius: Math.min(DW,DH)*0.16, name:'วงกลม' }); break;
+    case 'triangle':
+      o = new fabric.Triangle({ ...st, width: DW*0.28, height: DW*0.26, name:'สามเหลี่ยม' }); break;
+    case 'line':
+      o = new fabric.Line([0,0,DW*0.4,0], { stroke: st.stroke || '#C9A84C', strokeWidth: Math.max(st.strokeWidth,4), strokeUniform:true, name:'เส้นตรง' }); break;
+    case 'arrow': {
+      const L = DW*0.36, w = Math.max(st.strokeWidth, 6);
+      o = new fabric.Path(`M 0 0 L ${L} 0 M ${L} 0 L ${L-28} -16 M ${L} 0 L ${L-28} 16`, {
+        fill:'', stroke: st.stroke || '#8B0000', strokeWidth:w, strokeLineCap:'round', strokeUniform:true, name:'ลูกศร' });
+      break; }
+    case 'frame':
+      o = new fabric.Rect({ fill:'', stroke:'#C9A84C', strokeWidth: Math.max(4, Math.round(Math.min(DW,DH)*0.008)),
+        width: DW*0.94, height: DH*0.94, rx:2, ry:2, strokeUniform:true, name:'กรอบทอง', selectable:true });
+      break;
+  }
+  if (!o) return;
+  o.set({ left: cx, top: cy, originX:'center', originY:'center' });
+  canvas.add(o); canvas.setActiveObject(o); canvas.requestRenderAll();
+});
+$('shapeNoFill').onclick = () => {
+  const el = $('shapeFill');
+  el.dataset.none = el.dataset.none ? '' : '1';
+  $('shapeNoFill').classList.toggle('on', !!el.dataset.none);
+  const o = canvas.getActiveObject();
+  if (o && o.type !== 'image' && o.type !== 'i-text'){ o.set('fill', el.dataset.none ? '' : el.value); canvas.requestRenderAll(); snapshotSoon(); }
+};
+$('shapeFill').oninput = e => { e.target.dataset.none=''; $('shapeNoFill').classList.remove('on');
+  const o = canvas.getActiveObject(); if (o && !['image','i-text','path'].includes(o.type)){ o.set('fill', e.target.value); canvas.requestRenderAll(); snapshotSoon(); } };
+$('shapeStroke').oninput = e => { const o = canvas.getActiveObject(); if (o && o.type!=='image' && o.type!=='i-text'){ o.set('stroke', e.target.value); canvas.requestRenderAll(); snapshotSoon(); } };
+$('shapeStrokeW').oninput = e => { $('shapeStrokeWVal').textContent=e.target.value;
+  const o = canvas.getActiveObject(); if (o && o.type!=='image' && o.type!=='i-text'){ o.set('strokeWidth', +e.target.value); canvas.requestRenderAll(); snapshotSoon(); } };
+$('shapeRadius').oninput = e => { $('shapeRadiusVal').textContent=e.target.value;
+  const o = canvas.getActiveObject(); if (o && o.type==='rect'){ o.set({ rx:+e.target.value, ry:+e.target.value }); canvas.requestRenderAll(); snapshotSoon(); } };
+
+/* =========================================================
+   text
+   ========================================================= */
+$('addText').onclick = () => {
+  const t = new fabric.IText('พิมพ์ข้อความที่นี่', {
+    left: DW/2, top: DH/2, originX:'center', originY:'center',
+    fontFamily: $('textFont').value, fontSize: +$('textSize').value,
+    fill: $('textColor').value, name:'ข้อความ', fontWeight:'600'
+  });
+  canvas.add(t); canvas.setActiveObject(t);
+  t.enterEditing(); t.selectAll();
+  canvas.requestRenderAll();
+};
+function activeText(){ const o = canvas.getActiveObject(); return (o && o.type==='i-text') ? o : null; }
+$('textFont').onchange = e => { const t = activeText(); if (t){ t.set('fontFamily', e.target.value); canvas.requestRenderAll(); snapshotSoon(); } };
+$('textSize').oninput = e => { $('textSizeVal').textContent=e.target.value; const t = activeText(); if (t){ t.set('fontSize', +e.target.value); canvas.requestRenderAll(); snapshotSoon(); } };
+$('textColor').oninput = e => { const t = activeText(); if (t){ t.set('fill', e.target.value); canvas.requestRenderAll(); snapshotSoon(); } };
+document.querySelectorAll('[data-tstyle]').forEach(b => b.onclick = () => {
+  const t = activeText(); if (!t){ toast('เลือกข้อความก่อน'); return; }
+  if (b.dataset.tstyle==='bold') t.set('fontWeight', t.fontWeight==='700' ? '400' : '700');
+  if (b.dataset.tstyle==='italic') t.set('fontStyle', t.fontStyle==='italic' ? 'normal' : 'italic');
+  if (b.dataset.tstyle==='shadow') t.set('shadow', t.shadow ? null : new fabric.Shadow({ color:'rgba(0,0,0,.45)', blur:10, offsetX:0, offsetY:4 }));
+  canvas.requestRenderAll(); snapshotSoon();
+});
+document.querySelectorAll('[data-talign]').forEach(b => b.onclick = () => {
+  const t = activeText(); if (!t) return;
+  t.set('textAlign', b.dataset.talign); canvas.requestRenderAll(); snapshotSoon();
+});
+
+/* =========================================================
+   QR code
+   ========================================================= */
+let qrCanvasEl = null;
+function makeQR(){
+  const text = $('qrText').value.trim();
+  if (!text){ toast('ใส่ลิงก์หรือข้อความก่อน'); return null; }
+  const work = $('qrWork'); work.innerHTML = '';
+  new QRCode(work, {
+    text, width: 512, height: 512,
+    colorDark: $('qrDark').value,
+    colorLight: $('qrLight').dataset.trans ? 'rgba(0,0,0,0)' : $('qrLight').value,
+    correctLevel: QRCode.CorrectLevel[$('qrLevel').value]
+  });
+  qrCanvasEl = work.querySelector('canvas');
+  const prev = $('qrPreview'); prev.innerHTML = '';
+  const im = new Image(); im.src = qrCanvasEl.toDataURL('image/png');
+  prev.appendChild(im);
+  return qrCanvasEl;
+}
+$('qrGen').onclick = makeQR;
+$('qrTransparent').onclick = () => {
+  const el = $('qrLight');
+  el.dataset.trans = el.dataset.trans ? '' : '1';
+  $('qrTransparent').classList.toggle('on', !!el.dataset.trans);
+  if ($('qrText').value.trim()) makeQR();
+};
+$('qrLight').oninput = () => { $('qrLight').dataset.trans=''; $('qrTransparent').classList.remove('on'); if ($('qrText').value.trim()) makeQR(); };
+$('qrDark').oninput = () => { if ($('qrText').value.trim()) makeQR(); };
+$('qrAdd').onclick = () => {
+  const q = qrCanvasEl || makeQR(); if (!q) return;
+  fabric.Image.fromURL(q.toDataURL('image/png'), img => {
+    const s = Math.min(DW,DH)*0.3/512;
+    img.set({ left: DW*0.78, top: DH*0.78, originX:'center', originY:'center', scaleX:s, scaleY:s, name:'QR Code' });
+    canvas.add(img); canvas.setActiveObject(img); canvas.requestRenderAll();
+    toast('วาง QR ลงชิ้นงานแล้ว — ย้าย/ย่อขยายได้');
+  });
+};
+$('qrDownload').onclick = () => {
+  const q = qrCanvasEl || makeQR(); if (!q) return;
+  downloadURL(q.toDataURL('image/png'), 'tesr-qrcode.png');
+};
+
+/* =========================================================
+   layers
+   ========================================================= */
+function refreshLayers(){
+  const list = $('layersList');
+  const objs = canvas.getObjects();
+  if (!objs.length){ list.innerHTML = '<div class="empty">ยังไม่มีวัตถุในงาน</div>'; return; }
+  const act = canvas.getActiveObjects();
+  list.innerHTML = '';
+  [...objs].reverse().forEach(o => {
+    const row = document.createElement('div');
+    row.className = 'layer' + (act.includes(o) ? ' sel' : '');
+    row.innerHTML = `
+      <span class="mini vis ${o.visible?'':'off'}" title="ซ่อน/แสดง">${o.visible?'👁':'✕'}</span>
+      <span class="lname">${o.name || o.type}</span>
+      <span class="mini up" title="เลื่อนขึ้น">▲</span>
+      <span class="mini dn" title="เลื่อนลง">▼</span>
+      <span class="mini del" title="ลบ">🗑</span>`;
+    row.onclick = e => {
+      if (e.target.classList.contains('vis')){ o.visible = !o.visible; canvas.requestRenderAll(); refreshLayers(); snapshotSoon(); return; }
+      if (e.target.classList.contains('up')){ canvas.bringForward(o); canvas.requestRenderAll(); refreshLayers(); snapshotSoon(); return; }
+      if (e.target.classList.contains('dn')){ canvas.sendBackwards(o); canvas.requestRenderAll(); refreshLayers(); snapshotSoon(); return; }
+      if (e.target.classList.contains('del')){ canvas.remove(o); canvas.requestRenderAll(); return; }
+      canvas.setActiveObject(o); canvas.requestRenderAll(); refreshLayers();
+    };
+    list.appendChild(row);
+  });
+}
+
+/* =========================================================
+   templates
+   ========================================================= */
+function clearAll(){ canvas.getObjects().slice().forEach(o => canvas.remove(o)); }
+const TPL = {
+  product(){
+    setNoSnap(() => {
+      setDesignSizeQuiet(1000,1000,{ label:'สินค้า Shop — 1000×1000', phys:'สำหรับ tesrshop.com' });
+      bgTransparent=false; holder.classList.remove('transparent');
+      canvas.setBackgroundColor('#FFFFFF', ()=>{});
+      clearAll();
+      canvas.add(new fabric.Rect({ left:500, top:500, originX:'center', originY:'center', width:944, height:944, fill:'', stroke:'#C9A84C', strokeWidth:6, strokeUniform:true, name:'กรอบทอง' }));
+      canvas.add(new fabric.IText('TESR', { left:912, top:930, originX:'right', originY:'center', fontFamily:'Prompt', fontWeight:'700', fontSize:34, fill:'#8B0000', charSpacing:220, name:'โลโก้ TESR' }));
+      canvas.add(new fabric.IText('ชื่อสินค้า', { left:88, top:930, originX:'left', originY:'center', fontFamily:'Sarabun', fontWeight:'600', fontSize:30, fill:'#000000', name:'ชื่อสินค้า' }));
+    });
+    toast('เทมเพลตสินค้า — ลากรูปสินค้าที่ตัดพื้นแล้วมาวางกลางกรอบ');
+  },
+  promo(){
+    setNoSnap(() => {
+      setDesignSizeQuiet(1200,630,{ label:'โพสต์ Facebook — 1200×630', phys:'' });
+      bgTransparent=false; holder.classList.remove('transparent');
+      canvas.setBackgroundColor('#000000', ()=>{});
+      clearAll();
+      canvas.add(new fabric.Rect({ left:0, top:452, width:1200, height:178, fill:'#8B0000', name:'แถบแดง', selectable:true }));
+      canvas.add(new fabric.Rect({ left:0, top:444, width:1200, height:5, fill:'#C9A84C', name:'เส้นทอง', selectable:true }));
+      canvas.add(new fabric.IText('หัวข้อโปรโมชัน', { left:70, top:120, fontFamily:'Prompt', fontWeight:'700', fontSize:72, fill:'#FFFFFF', name:'หัวข้อ' }));
+      canvas.add(new fabric.IText('รายละเอียด / ช่วงเวลา / เงื่อนไข', { left:70, top:222, fontFamily:'Sarabun', fontSize:34, fill:'#C9A84C', name:'รายละเอียด' }));
+      canvas.add(new fabric.IText('TESR  ·  tesrshop.com', { left:70, top:518, fontFamily:'Prompt', fontWeight:'600', fontSize:32, fill:'#FFFFFF', charSpacing:60, name:'แบรนด์' }));
+    });
+    toast('เทมเพลตโปรโมชัน — แก้ข้อความแล้ววางรูปสินค้าฝั่งขวา');
+  },
+  course(){
+    setNoSnap(() => {
+      setDesignSizeQuiet(1280,720,{ label:'สไลด์พรีเซนต์ 16:9 — 1280×720', phys:'อัตราส่วนเท่าจอ TV/โปรเจกเตอร์' });
+      bgTransparent=false; holder.classList.remove('transparent');
+      canvas.setBackgroundColor('#0D0D0F', ()=>{});
+      clearAll();
+      canvas.add(new fabric.Rect({ left:0, top:0, width:14, height:720, fill:'#8B0000', name:'แถบข้าง' }));
+      canvas.add(new fabric.IText('TESR ACADEMY', { left:80, top:96, fontFamily:'Prompt', fontWeight:'600', fontSize:26, fill:'#C9A84C', charSpacing:420, name:'Academy' }));
+      canvas.add(new fabric.Rect({ left:80, top:150, width:180, height:3, fill:'#C9A84C', name:'เส้นทอง' }));
+      canvas.add(new fabric.IText('ชื่อคอร์ส', { left:80, top:250, fontFamily:'Prompt', fontWeight:'700', fontSize:96, fill:'#FFFFFF', name:'ชื่อคอร์ส' }));
+      canvas.add(new fabric.IText('Hands-on · Real Deployment', { left:80, top:400, fontFamily:'Sarabun', fontSize:36, fill:'#8E8C86', name:'คำโปรย' }));
+    });
+    toast('เทมเพลตปกคอร์ส — แก้ชื่อคอร์สแล้ววางรูป robot จริงประกอบ');
+  }
+};
+function setDesignSizeQuiet(w,h,meta){ DW=w; DH=h; if (meta) designMeta = meta; applyZoom(zoom); updateSizeStatus(); fitZoom(); }
+function setNoSnap(fn){ restoring = true; fn(); restoring = false; canvas.requestRenderAll(); refreshLayers(); snapshot(); }
+document.querySelectorAll('[data-tpl]').forEach(t => t.onclick = () => TPL[t.dataset.tpl]());
+
+/* =========================================================
+   export engine — PNG / JPG / PDF / PPTX / HTML slideshow
+   ========================================================= */
+function downloadURL(url, name){
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function renderPage(pstr, mul, fmt, quality){
+  return new Promise(resolve => {
+    const d = JSON.parse(pstr);
+    const sc = new fabric.StaticCanvas(null, { width: d.w, height: d.h, enableRetinaScaling: false });
+    sc.loadFromJSON(d.json, () => {
+      if (fmt === 'jpeg' && (!sc.backgroundColor || sc.backgroundColor === '')) sc.setBackgroundColor('#ffffff', ()=>{});
+      const gifs = [];
+      sc.getObjects().forEach(o => {
+        if (o.gifSrc && o.visible !== false){
+          const c = o.getCenterPoint();
+          gifs.push({ src: o.gifSrc, cx: c.x, cy: c.y, w: o.getScaledWidth(), h: o.getScaledHeight(), angle: o.angle || 0 });
+        }
+      });
+      sc.renderAll();
+      const url = sc.toDataURL({ format: fmt === 'jpeg' ? 'jpeg' : 'png', quality, multiplier: mul, enableRetinaScaling: false });
+      const meta = d.meta || null;
+      sc.dispose();
+      resolve({ url, w: d.w, h: d.h, gifs, meta });
+    });
+  });
+}
+$('exportBtn').onclick = () => {
+  const multi = pages.length > 1;
+  $('expScopeRow').style.display = multi ? 'flex' : 'none';
+  if (!multi) $('expScope').value = 'cur';
+  $('exportModal').classList.add('show');
+};
+$('expCancel').onclick = () => $('exportModal').classList.remove('show');
+$('expFormat').onchange = e => {
+  const f = e.target.value;
+  $('expQualityRow').style.display = f === 'jpeg' ? 'flex' : 'none';
+  $('expDurRow').style.display   = f === 'webm' ? 'flex' : 'none';
+  $('expScaleRow').style.display = f === 'webm' ? 'none' : 'flex';
+};
+$('expQuality').oninput = e => $('expQualityVal').textContent = e.target.value;
+
+async function doExport(){
+  const fmt = $('expFormat').value;
+  const mul = +$('expScale').value;
+  const q = +$('expQuality').value / 100;
+  const scope = $('expScope').value;
+  const base = ($('expName').value.trim() || 'tesr-image');
+  canvas.discardActiveObject(); canvas.requestRenderAll();
+  saveCur();
+  const sel = (scope === 'all') ? pages.slice() : [pages[curPage]];
+  $('expGo').disabled = true; $('expGo').textContent = 'กำลังสร้าง…';
+  try{
+    if (fmt === 'png' || fmt === 'jpeg'){
+      for (let i = 0; i < sel.length; i++){
+        const r = await renderPage(sel[i], mul, fmt, q);
+        const suffix = sel.length > 1 ? `-p${i+1}` : '';
+        downloadURL(r.url, base + suffix + (fmt === 'png' ? '.png' : '.jpg'));
+        await new Promise(t => setTimeout(t, 350));
+      }
+    }
+    else if (fmt === 'pdf'){
+      if (!window.jspdf){ toast('โหลดไลบรารี PDF ไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วรีเฟรช'); return; }
+      let doc = null;
+      for (let i = 0; i < sel.length; i++){
+        const r = await renderPage(sel[i], mul, 'jpeg', 0.92);
+        const orient = r.w >= r.h ? 'l' : 'p';
+        if (!doc) doc = new jspdf.jsPDF({ orientation: orient, unit: 'px', format: [r.w, r.h], hotfixes: ['px_scaling'] });
+        else doc.addPage([r.w, r.h], orient);
+        doc.addImage(r.url, 'JPEG', 0, 0, r.w, r.h);
+      }
+      doc.save(base + '.pdf');
+    }
+    else if (fmt === 'pptx'){
+      if (!window.PptxGenJS){ toast('โหลดไลบรารี PowerPoint ไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วรีเฟรช'); return; }
+      const first = JSON.parse(sel[0]);
+      const W = Math.min(56, first.w / 96), H = Math.min(56, first.h / 96);
+      const pptx = new PptxGenJS();
+      pptx.defineLayout({ name: 'TESR', width: W, height: H });
+      pptx.layout = 'TESR';
+      for (let i = 0; i < sel.length; i++){
+        const r = await renderPage(sel[i], mul, 'png', 1);
+        const slide = pptx.addSlide();
+        const s = Math.min(W / (r.w / 96), H / (r.h / 96));
+        const iw = (r.w / 96) * s, ih = (r.h / 96) * s, ix = (W - iw) / 2, iy = (H - ih) / 2;
+        slide.addImage({ data: r.url, x: ix, y: iy, w: iw, h: ih });
+        r.gifs.forEach(g => {
+          slide.addImage({ data: g.src,
+            x: ix + (g.cx - g.w/2) / r.w * iw, y: iy + (g.cy - g.h/2) / r.h * ih,
+            w: g.w / r.w * iw, h: g.h / r.h * ih, rotate: Math.round(g.angle) });
+        });
+      }
+      await pptx.writeFile({ fileName: base + '.pptx' });
+    }
+    else if (fmt === 'webm'){
+      await exportVideo(sel, base);
+    }
+    else if (fmt === 'html'){
+      const parts = [];
+      for (let i = 0; i < sel.length; i++){
+        const r = await renderPage(sel[i], mul, 'png', 1);
+        const gifHtml = r.gifs.map(g =>
+          `<img class="gif" src="${g.src}" style="left:${(g.cx/r.w*100).toFixed(3)}%;top:${(g.cy/r.h*100).toFixed(3)}%;width:${(g.w/r.w*100).toFixed(3)}%;transform:translate(-50%,-50%) rotate(${g.angle}deg)">`
+        ).join('');
+        parts.push(`<section class="slide" data-ar="${(r.w/r.h).toFixed(5)}"><img class="bg" src="${r.url}" draggable="false">${gifHtml}</section>`);
+      }
+      const html = buildSlideshowHTML(parts, base);
+      downloadURL(URL.createObjectURL(new Blob([html], { type: 'text/html' })), base + '.html');
+    }
+    toast('Export สำเร็จ');
+    $('exportModal').classList.remove('show');
+  } finally {
+    $('expGo').disabled = false; $('expGo').textContent = 'ดาวน์โหลด';
+  }
+}
+$('expGo').onclick = doExport;
+
+/* ---------- video export: MediaRecorder + ImageDecoder (GIF frames) ---------- */
+function loadImgEl(url){ return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; }); }
+async function decodeGif(dataURL){
+  if (!('ImageDecoder' in window)) return null;
+  const resp = await fetch(dataURL);
+  const buf = await resp.arrayBuffer();
+  const dec = new ImageDecoder({ data: buf, type: 'image/gif' });
+  await dec.tracks.ready;
+  const n = dec.tracks.selectedTrack.frameCount;
+  const frames = [];
+  for (let i = 0; i < n; i++){
+    const { image } = await dec.decode({ frameIndex: i });
+    const dur = Math.max(20, (image.duration || 100000) / 1000);   // µs -> ms
+    const bmp = await createImageBitmap(image);
+    image.close();
+    frames.push({ bmp, dur });
+  }
+  try{ dec.close(); }catch(e){}
+  return frames.length ? frames : null;
+}
+async function exportVideo(sel, base){
+  const durPer = Math.max(1, Math.min(30, +$('expDur').value || 3)) * 1000;
+  const first = JSON.parse(sel[0]);
+  const vs = Math.min(1, 1920 / Math.max(first.w, first.h));   // จำกัดวิดีโอที่ 1920px เพื่อความลื่น
+  const VW = Math.round(first.w * vs), VH = Math.round(first.h * vs);
+  const canDecode = ('ImageDecoder' in window);
+  let hasGif = false;
+
+  const pagesData = [];
+  for (const p of sel){
+    const r = await renderPage(p, vs, 'png', 1);
+    const bg = await loadImgEl(r.url);
+    const gifs = [];
+    for (const g of r.gifs){
+      hasGif = true;
+      let frames = null;
+      if (canDecode){ try{ frames = await decodeGif(g.src); } catch(err){ frames = null; } }
+      gifs.push({ ...g, frames });
+    }
+    pagesData.push({ bg, w: r.w, h: r.h, gifs });
+  }
+  if (hasGif && !canDecode) toast('เบราว์เซอร์นี้เล่นเฟรม GIF ในวิดีโอไม่ได้ — GIF จะเป็นภาพนิ่ง (แนะนำ Chrome หรือ Edge)');
+
+  const cv = document.createElement('canvas'); cv.width = VW; cv.height = VH;
+  const cx = cv.getContext('2d');
+  const stream = cv.captureStream(30);
+  const mime = ['video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm']
+    .find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+  if (!mime){ toast('เบราว์เซอร์นี้อัดวิดีโอไม่ได้ — แนะนำ Chrome/Edge/Firefox เวอร์ชันล่าสุด'); return; }
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8000000 });
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  const stopped = new Promise(r => rec.onstop = r);
+  rec.start(250);
+
+  const t0 = performance.now();
+  const total = durPer * pagesData.length;
+  await new Promise(finish => {
+    function frame(){
+      const t = performance.now() - t0;
+      if (t >= total){ finish(); return; }
+      $('expGo').textContent = `กำลังอัดวิดีโอ… ${Math.ceil((total - t)/1000)} วิ`;
+      const pg = pagesData[Math.min(pagesData.length - 1, Math.floor(t / durPer))];
+      cx.fillStyle = '#000'; cx.fillRect(0, 0, VW, VH);
+      const s = Math.min(VW / pg.bg.width, VH / pg.bg.height);
+      const iw = pg.bg.width * s, ih = pg.bg.height * s, ix = (VW - iw)/2, iy = (VH - ih)/2;
+      cx.drawImage(pg.bg, ix, iy, iw, ih);
+      pg.gifs.forEach(g => {
+        if (!g.frames) return;   // ไม่มีเฟรม = เฟรมแรกถูกฝังในภาพพื้นแล้ว
+        let cyc = g._cyc || (g._cyc = g.frames.reduce((a, f) => a + f.dur, 0));
+        let tt = t % cyc, k = 0;
+        while (tt > g.frames[k].dur){ tt -= g.frames[k].dur; k = (k + 1) % g.frames.length; }
+        const gx = ix + g.cx / pg.w * iw, gy = iy + g.cy / pg.h * ih;
+        const gw = g.w / pg.w * iw,  gh = g.h / pg.h * ih;
+        cx.save();
+        cx.translate(gx, gy);
+        cx.rotate((g.angle || 0) * Math.PI / 180);
+        cx.drawImage(g.frames[k].bmp, -gw/2, -gh/2, gw, gh);
+        cx.restore();
+      });
+      requestAnimationFrame(frame);
+    }
+    frame();
+  });
+  rec.stop();
+  await stopped;
+  stream.getTracks().forEach(tr => tr.stop());
+  pagesData.forEach(pg => pg.gifs.forEach(g => g.frames && g.frames.forEach(f => f.bmp.close && f.bmp.close())));
+  const ext = mime.startsWith('video/mp4') ? '.mp4' : '.webm';
+  downloadURL(URL.createObjectURL(new Blob(chunks, { type: mime.split(';')[0] })), base + ext);
+}
+
+function buildSlideshowHTML(sections, title){
+  return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} — TESR</title><style>
+html,body{margin:0;height:100%;background:#0B0B0D;font-family:sans-serif;overflow:hidden}
+.deck{height:100%;display:flex;align-items:center;justify-content:center}
+.slide{position:relative;display:none}
+.slide.on{display:block}
+.slide .bg{width:100%;height:100%;display:block;box-shadow:0 10px 60px rgba(0,0,0,.7);user-select:none}
+.slide .gif{position:absolute;pointer-events:none}
+.nav{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;color:#8E8C86;font-size:13px;user-select:none;font-variant-numeric:tabular-nums}
+.nav button{background:#17171B;border:1px solid #33333B;color:#C9A84C;border-radius:4px;padding:6px 14px;cursor:pointer;font-size:14px}
+.nav button:hover{border-color:#C9A84C}
+.bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#8B0000,#C9A84C);transition:width .25s;z-index:5}
+</style></head><body>
+<div class="bar" id="bar"></div>
+<div class="deck">${sections.join('')}</div>
+<div class="nav"><button onclick="go(-1)">◀</button><span id="pg"></span><button onclick="go(1)">▶</button></div>
+<script>
+const S=[...document.querySelectorAll('.slide')];let i=0;
+function fit(){S.forEach(s=>{const ar=+s.dataset.ar;let w=Math.min(innerWidth*0.96, innerHeight*0.90*ar);s.style.width=w+'px';s.style.height=(w/ar)+'px';});}
+function show(){S.forEach((s,k)=>s.classList.toggle('on',k===i));document.getElementById('pg').textContent=(i+1)+' / '+S.length;document.getElementById('bar').style.width=((i+1)/S.length*100)+'%';}
+function go(d){i=Math.min(S.length-1,Math.max(0,i+d));show();}
+addEventListener('resize',fit);
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown')go(1);if(e.key==='ArrowLeft'||e.key==='PageUp')go(-1);});
+document.addEventListener('click',e=>{if(e.target.tagName!=='BUTTON')go(e.clientX>innerWidth/2?1:-1);});
+fit();show();
+<\/script></body></html>`;
+}
+
+/* ---------- project save/open (multi-page) ---------- */
+$('saveProj').onclick = () => {
+  saveCur();
+  const blob = new Blob([JSON.stringify({ app: 'tesr-forge', v: 2, cur: curPage, pages })], { type: 'application/json' });
+  downloadURL(URL.createObjectURL(blob), 'tesr-project.json');
+  toast('บันทึกไฟล์โปรเจกต์แล้ว — เปิดกลับมาแก้ต่อ หรือส่งให้ทีมได้');
+};
+$('openProj').onclick = () => $('projInput').click();
+$('projInput').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const d = JSON.parse(rd.result);
+      if ((d.app === 'tesr-forge' || d.app === 'tesr-canva') && Array.isArray(d.pages) && d.pages.length){
+        pages = d.pages; curPage = Math.min(d.cur || 0, pages.length - 1);
+      } else {
+        pages = [rd.result]; curPage = 0;   // ไฟล์เวอร์ชันเก่า (หน้าเดียว)
+      }
+      gotoPage(curPage, true);
+      toast('เปิดโปรเจกต์แล้ว');
+    } catch(err){ toast('ไฟล์โปรเจกต์ไม่ถูกต้อง'); }
+  };
+  rd.readAsText(f); e.target.value = '';
+};
+
+/* ---------- boot ---------- */
+window.addEventListener('resize', () => { /* keep zoom; user can Fit */ });
+Promise.all([
+  document.fonts.load('600 16px Prompt'),
+  document.fonts.load('400 16px Sarabun'),
+  document.fonts.load('600 16px Kanit')
+]).finally(() => {
+  setDesignSize(1000, 1000, { label:'สินค้า Shop — 1000×1000', phys:'สำหรับ tesrshop.com' });
+  pages = [serialize()]; curPage = 0; updatePageBar();
+  canvas.requestRenderAll();
+});
+// leave magic mode when switching tools
+const _setTool = setTool;
+setTool = function(t){ magicMode = false; bakedFor = null; _setTool(t); };
+</script>
+</body>
+</html>
