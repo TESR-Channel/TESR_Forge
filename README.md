@@ -26,7 +26,7 @@
 1. สร้าง repository ใหม่ เช่น `tesr-forge`
 2. อัปโหลด `index.html` (และ `README.md`) ไว้ที่ root ของ repo
 3. ไปที่ **Settings → Pages** → Source เลือก `Deploy from a branch` → Branch `main` / root → Save
-4. รอ 1–2 นาที เปิดใช้ได้ที่ `https://<username>.github.io/tesr-forge/`
+4. รอ 1–2 นาที เปิดใช้ได้ที่ 'https://tesr-channel.github.io/TESR_Forge/'
 
 > ต้องออนไลน์ครั้งแรกเพื่อโหลดฟอนต์และไลบรารีจาก CDN (Fabric.js, qrcodejs)
 
