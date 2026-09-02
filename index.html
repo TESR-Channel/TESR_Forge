@@ -35,7 +35,7 @@ input[type=color]{padding:1px; width:34px; height:28px; cursor:pointer}
 input[type=number]{width:70px}
 
 /* ---------- Layout ---------- */
-#app{display:grid; grid-template-rows:56px 1fr; height:100vh}
+#app{display:grid; grid-template-rows:56px 48px 1fr; height:100vh}
 header{
   display:flex; align-items:center; gap:16px; padding:0 14px;
   background:var(--panel); border-bottom:1px solid var(--line); position:relative; z-index:20;
@@ -73,21 +73,21 @@ header::after{
 .btn:disabled{opacity:.35; pointer-events:none}
 .btn svg{width:15px; height:15px}
 
-main{display:grid; grid-template-columns:76px 1fr 292px; min-height:0}
+main{display:grid; grid-template-columns:1fr 292px; min-height:0}
 
 /* ---------- Tool rail ---------- */
 #toolRail{
-  background:var(--panel); border-right:1px solid var(--line);
-  display:flex; flex-direction:column; align-items:stretch; padding:8px 0; gap:2px; overflow-y:auto;
+  background:var(--panel); border-bottom:1px solid var(--line);
+  display:flex; justify-content:center; align-items:stretch; gap:2px; padding:0 10px; overflow-x:auto;
 }
 .tool{
-  display:flex; flex-direction:column; align-items:center; gap:4px;
-  padding:9px 2px; color:var(--muted); position:relative; border-left:2px solid transparent;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  padding:4px 15px; color:var(--muted); position:relative; border-bottom:2px solid transparent; flex:none;
 }
-.tool svg{width:21px; height:21px}
+.tool svg{width:19px; height:19px}
 .tool span{font-size:10px; letter-spacing:.02em}
 .tool:hover{color:var(--text)}
-.tool.active{color:var(--gold); border-left-color:var(--gold); background:linear-gradient(90deg, rgba(201,168,76,.08), transparent)}
+.tool.active{color:var(--gold); border-bottom-color:var(--gold); background:linear-gradient(180deg, rgba(201,168,76,.07), transparent)}
 .tool.danger.active{color:var(--crimson-hi); border-left-color:var(--crimson-hi)}
 
 /* ---------- Stage ---------- */
@@ -198,6 +198,16 @@ main{display:grid; grid-template-columns:76px 1fr 292px; min-height:0}
 .tpl .thumb{height:74px; display:flex; align-items:center; justify-content:center; font-family:'Prompt'; font-weight:700; letter-spacing:.1em; font-size:13px}
 .tpl .cap{padding:6px 9px; font-size:12px; color:var(--muted); background:var(--panel2)}
 
+/* size popover */
+#sizePop{position:absolute; top:42px; left:0; z-index:60; width:280px; display:none;
+  background:var(--panel2); border:1px solid var(--line2); border-top:2px solid var(--gold);
+  border-radius:6px; padding:12px; box-shadow:0 12px 34px rgba(0,0,0,.55)}
+#sizePop.show{display:block}
+#sizePop .sp-label{font-size:11px; color:var(--gold); letter-spacing:.1em; margin:10px 0 6px; font-family:'Prompt'}
+#sizePop .sp-label:first-child{margin-top:0}
+#sizePop .ckrow{display:flex; gap:8px; align-items:flex-start; font-size:12px; color:var(--muted); margin-top:10px; cursor:pointer}
+#sizePop .ckrow input{margin-top:2px}
+
 /* context menu */
 #ctxMenu{position:fixed; display:none; z-index:120; min-width:195px; background:var(--panel2);
   border:1px solid var(--line2); border-top:2px solid var(--gold); border-radius:5px;
@@ -226,7 +236,7 @@ main{display:grid; grid-template-columns:76px 1fr 292px; min-height:0}
 .modal .actions{display:flex; justify-content:flex-end; gap:8px; margin-top:14px}
 
 @media (max-width:960px){
-  main{grid-template-columns:64px 1fr 250px}
+  main{grid-template-columns:1fr 250px}
   .hgroup label{display:none}
 }
 ::-webkit-scrollbar{width:10px; height:10px}
@@ -245,23 +255,35 @@ main{display:grid; grid-template-columns:76px 1fr 292px; min-height:0}
     </div>
   </div>
   <div class="divv"></div>
-  <div class="hgroup">
-    <label>ขนาดงาน</label>
-    <select id="presetSel"></select>
-    <span id="customSize" style="display:none; gap:4px; align-items:center">
-      <input type="number" id="cw" value="1000" min="1" max="4096" style="width:64px"> ×
-      <input type="number" id="ch" value="1000" min="1" max="4096" style="width:64px">
-      <select id="cUnit" title="หน่วย"><option value="px">px</option><option value="cm">ซม.</option></select>
-      <select id="cDpi" style="display:none" title="ความละเอียดงานพิมพ์">
+  <div class="hgroup" style="position:relative">
+    <button class="btn" id="sizeBtn">📐 ขนาดงาน ▾</button>
+    <div id="sizePop">
+      <div class="sp-label">ขนาดสำเร็จรูป</div>
+      <select id="presetSel" style="width:100%"></select>
+      <div class="sp-label">สัดส่วนด่วน — คงความกว้างเดิม ปรับความสูงตาม</div>
+      <div class="grid3">
+        <button class="chip" data-ratio="1,1">1:1</button>
+        <button class="chip" data-ratio="4,5">4:5</button>
+        <button class="chip" data-ratio="3,2">3:2</button>
+        <button class="chip" data-ratio="16,9">16:9</button>
+        <button class="chip" data-ratio="9,16">9:16</button>
+        <button class="chip" data-ratio="2,1">2:1</button>
+      </div>
+      <div class="sp-label">กำหนดเอง</div>
+      <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px">
+        <input type="number" id="cw" value="1000" min="1" max="4096" style="flex:1"> ×
+        <input type="number" id="ch" value="1000" min="1" max="4096" style="flex:1">
+        <select id="cUnit" title="หน่วย"><option value="px">px</option><option value="cm">ซม.</option></select>
+      </div>
+      <select id="cDpi" style="display:none; width:100%; margin-bottom:6px" title="ความละเอียดงานพิมพ์">
         <option value="300">300 DPI — พิมพ์คม</option>
         <option value="150">150 DPI — ทั่วไป</option>
         <option value="96">96 DPI — จอ</option>
         <option value="50">50 DPI — ป้าย/ไวนิลใหญ่</option>
       </select>
-      <button class="btn" id="applySize">ตกลง</button>
-    </span>
-  </div>
-  <div class="hgroup">
+      <label class="ckrow"><input type="checkbox" id="scaleContent" checked> ย่อ/ขยายวัตถุในงานให้พอดีขนาดใหม่อัตโนมัติ</label>
+      <button class="btn primary" id="applySize" style="width:100%; justify-content:center; margin-top:8px">ใช้ขนาดนี้</button>
+    </div>
     <label>พื้นหลัง</label>
     <input type="color" id="bgColor" value="#ffffff" title="สีพื้นหลังชิ้นงาน">
     <button class="btn" id="bgTransparent" title="พื้นหลังโปร่งใส (PNG)">โปร่งใส</button>
@@ -286,9 +308,8 @@ main{display:grid; grid-template-columns:76px 1fr 292px; min-height:0}
   </div>
 </header>
 
-<main>
-  <!-- ============ TOOL RAIL ============ -->
-  <nav id="toolRail">
+<!-- ============ TOOL RAIL ============ -->
+<nav id="toolRail">
     <button class="tool active" data-tool="select" title="เลือก/ย้ายวัตถุ (V)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3 19 12l-6 1.5L9.5 20 5 3Z"/></svg><span>เลือก</span>
     </button>
@@ -300,6 +321,9 @@ main{display:grid; grid-template-columns:76px 1fr 292px; min-height:0}
     </button>
     <button class="tool" data-tool="erase" title="ยางลบพื้นหลัง — ลบเองด้วยแปรง">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 21 10-10M3 17 13 7l6 6-8 8H7l-4-4Z"/></svg><span>ยางลบ</span>
+    </button>
+    <button class="tool" data-tool="crop" title="ครอบตัดรูป — หรือดับเบิลคลิกที่รูป">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/></svg><span>ครอบตัด</span>
     </button>
     <button class="tool" data-tool="draw" title="วาด/ระบายสี (B)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20c1.5-.5 3-.5 4-1.5L19.5 7A2.1 2.1 0 0 0 16.5 4L5 15.5C4 16.5 4.5 18.5 4 20Z"/></svg><span>วาด</span>
@@ -318,6 +342,8 @@ main{display:grid; grid-template-columns:76px 1fr 292px; min-height:0}
     </button>
   </nav>
 
+
+<main>
   <!-- ============ STAGE ============ -->
   <section id="stage">
     <div id="stageInner">
@@ -414,9 +440,33 @@ main{display:grid; grid-template-columns:76px 1fr 292px; min-height:0}
       <!-- ===== PANEL: erase ===== -->
       <div class="panel" id="panel-erase">
         <div class="sec">
-          <h3>ยางลบพื้นหลัง</h3>
+          <h3>ยางลบ / แปรงคืนภาพ</h3>
+          <div class="grid2" style="margin-bottom:8px">
+            <button class="chip on" data-emode="erase">🧹 ลบออก</button>
+            <button class="chip" data-emode="restore">🖌 คืนกลับ</button>
+          </div>
           <div class="row"><label>ขนาดแปรง</label><input type="range" id="eraseSize" min="4" max="150" value="36"><span class="val" id="eraseSizeVal">36</span></div>
-          <div class="hint">1. คลิกเลือกรูปที่จะลบก่อน<br>2. ลากเมาส์บนรูปเพื่อลบส่วนที่ไม่ต้องการ — ผลลัพธ์โปร่งใสจริง Export เป็น PNG ได้ทันที<br><b>คำเตือน:</b> การลบแก้ที่เนื้อรูปโดยตรง ใช้ ปุ่มย้อนกลับ (Ctrl+Z) หากพลาด</div>
+          <div class="hint">ใช้คู่กับ AI แบบ Photoshop: <b>ลบออก</b> = ลบส่วนที่ AI เก็บเกิน · <b>คืนกลับ</b> = ระบายส่วนที่ AI ลบพลาดให้กลับมา (เช่น ขอบสินค้า โลโก้ เงา)<br>เลือกรูปในโหมด "เลือก" ก่อน แล้วลากเมาส์บนรูปได้เลย · พลาดกด Ctrl+Z</div>
+        </div>
+      </div>
+
+      <!-- ===== PANEL: crop ===== -->
+      <div class="panel" id="panel-crop">
+        <div class="sec">
+          <h3>ครอบตัดรูป</h3>
+          <div class="grid3">
+            <button class="chip on" data-cropar="free">อิสระ</button>
+            <button class="chip" data-cropar="1,1">1:1</button>
+            <button class="chip" data-cropar="4,5">4:5</button>
+            <button class="chip" data-cropar="16,9">16:9</button>
+            <button class="chip" data-cropar="9,16">9:16</button>
+            <button class="chip" data-cropar="3,2">3:2</button>
+          </div>
+          <div class="grid2" style="margin-top:10px">
+            <button class="btn primary" id="cropOk" style="justify-content:center">✓ ตัดเลย</button>
+            <button class="btn" id="cropCancel" style="justify-content:center">ยกเลิก</button>
+          </div>
+          <div class="hint">ลาก/ย่อกรอบทองเลือกส่วนที่จะเก็บ แล้วกด "ตัดเลย" · เข้าโหมดนี้เร็วๆ ได้ด้วยการ<b>ดับเบิลคลิกที่รูป</b></div>
         </div>
       </div>
 
@@ -692,9 +742,6 @@ const cmToPx = (cm, dpi) => Math.round(cm/CM_IN*dpi);
     });
     sel.appendChild(og);
   });
-  const c = document.createElement('option');
-  c.value = 'custom'; c.textContent = 'กำหนดเอง… (px หรือ ซม.)';
-  sel.appendChild(c);
 })();
 function findPreset(id){ for (const g of SIZE_GROUPS) for (const it of g.items) if (it.id===id) return it; return null; }
 function applyPreset(it){
@@ -705,16 +752,47 @@ function applyPreset(it){
   } else { w = it.w; h = it.h; }
   setDesignSize(w, h, { label: it.label, phys });
 }
+/* popover เปิด/ปิด */
+$('sizeBtn').onclick = e => { e.stopPropagation(); $('sizePop').classList.toggle('show'); };
+$('sizePop').onclick = e => e.stopPropagation();
+document.addEventListener('click', () => $('sizePop').classList.remove('show'));
+
+/* เปลี่ยนขนาดพร้อมย่อ/ขยายวัตถุตามสัดส่วน (แบบ Canva Resize) */
+function resizeDesign(w, h, meta){
+  if ($('scaleContent').checked && canvas.getObjects().length && (w !== DW || h !== DH)){
+    const s = Math.min(w / DW, h / DH);
+    const dx = (w - DW * s) / 2, dy = (h - DH * s) / 2;
+    canvas.getObjects().forEach(o => {
+      o.scaleX *= s; o.scaleY *= s;
+      o.left = o.left * s + dx;
+      o.top  = o.top  * s + dy;
+      o.setCoords();
+    });
+  }
+  setDesignSize(w, h, meta);
+  $('cw').value = w; $('ch').value = h;
+}
 $('presetSel').onchange = e => {
-  if (e.target.value === 'custom'){ $('customSize').style.display = 'inline-flex'; return; }
-  $('customSize').style.display = 'none';
   const it = findPreset(e.target.value);
-  if (it) applyPreset(it);
+  if (!it) return;
+  let w, h, phys = it.phys || '';
+  if (it.cm){
+    w = cmToPx(it.cm[0], it.dpi); h = cmToPx(it.cm[1], it.dpi);
+    phys = `ขนาดจริง ${it.cm[0]}×${it.cm[1]} ซม. @ ${it.dpi} DPI`;
+  } else { w = it.w; h = it.h; }
+  resizeDesign(w, h, { label: it.label, phys });
+  $('sizePop').classList.remove('show');
 };
-$('cUnit').onchange = e => $('cDpi').style.display = e.target.value==='cm' ? '' : 'none';
+document.querySelectorAll('[data-ratio]').forEach(b => b.onclick = () => {
+  const [rw, rh] = b.dataset.ratio.split(',').map(Number);
+  let w = DW, h = Math.round(DW * rh / rw);
+  if (h > 4096){ h = 4096; w = Math.round(h * rw / rh); }
+  resizeDesign(w, h, { label: `สัดส่วน ${rw}:${rh} — ${w}×${h}`, phys: '' });
+});
+$('cUnit').onchange = e => $('cDpi').style.display = e.target.value === 'cm' ? '' : 'none';
 $('applySize').onclick = () => {
   const unit = $('cUnit').value;
-  let w = +$('cw').value||0, h = +$('ch').value||0, meta;
+  let w = +$('cw').value || 0, h = +$('ch').value || 0, meta;
   if (unit === 'cm'){
     const dpi = +$('cDpi').value;
     const pw = cmToPx(w, dpi), ph = cmToPx(h, dpi);
@@ -723,11 +801,12 @@ $('applySize').onclick = () => {
     meta = { label:`กำหนดเอง — ${w}×${h} ซม.`, phys:`ขนาดจริง ${w}×${h} ซม. @ ${dpi} DPI` };
     w = pw; h = ph;
   } else {
-    w = Math.min(4096, Math.max(20, Math.round(w||1000)));
-    h = Math.min(4096, Math.max(20, Math.round(h||1000)));
+    w = Math.min(4096, Math.max(20, Math.round(w || 1000)));
+    h = Math.min(4096, Math.max(20, Math.round(h || 1000)));
     meta = { label:`กำหนดเอง — ${w}×${h} px`, phys:'' };
   }
-  setDesignSize(w, h, meta);
+  resizeDesign(w, h, meta);
+  $('sizePop').classList.remove('show');
 };
 
 /* ---------- background ---------- */
@@ -763,6 +842,7 @@ function snapshot(){
 }
 function snapshotSoon(){ clearTimeout(snapTimer); snapTimer = setTimeout(snapshot, 350); }
 function restore(s){
+  if (typeof cropState !== 'undefined' && cropState) exitCrop(false);
   restoring = true;
   const d = JSON.parse(s);
   DW = d.w; DH = d.h; bgTransparent = d.bgT;
@@ -841,7 +921,8 @@ const statusText = {
   select:  '<b>เลือก</b> — คลิกวัตถุเพื่อย้าย/ย่อขยาย · ดับเบิลคลิกข้อความเพื่อแก้ · ปุ่ม Delete เพื่อลบ',
   upload:  '<b>รูปภาพ</b> — เลือกไฟล์ หรือลากรูปมาวางบนพื้นที่งานได้เลย',
   image:   '<b>ปรับภาพ</b> — เลือกรูปก่อน แล้วปรับสี/ฟิลเตอร์/ลบพื้นหลังจากแผงขวา',
-  erase:   '<b>ยางลบ</b> — เลือกรูปก่อน แล้วลากเมาส์ลบส่วนที่ไม่ต้องการ',
+  erase:   '<b>ยางลบ/คืนภาพ</b> — เลือกรูปก่อน แล้วลากเมาส์ลบหรือระบายคืนส่วนที่ AI ตัดพลาด',
+  crop:    '<b>ครอบตัด</b> — ลากปรับกรอบทองแล้วกด "ตัดเลย" ในแผงขวา',
   draw:    '<b>วาด</b> — ลากเมาส์วาดบนชิ้นงานได้เลย',
   shape:   '<b>รูปทรง</b> — กดปุ่มรูปทรงจากแผงขวาเพื่อเพิ่มลงงาน',
   text:    '<b>ข้อความ</b> — กด "+ เพิ่มข้อความ" แล้วดับเบิลคลิกเพื่อพิมพ์',
@@ -959,7 +1040,7 @@ $('objOpacity').oninput = e => {
 };
 $('delObj').onclick = deleteActive;
 function deleteActive(){
-  const objs = canvas.getActiveObjects();
+  const objs = canvas.getActiveObjects().filter(o => o.name !== '__crop');
   if (!objs.length) return;
   canvas.discardActiveObject();
   objs.forEach(o => canvas.remove(o));
@@ -1286,8 +1367,9 @@ function loadImgly(){
   return _imglyMod;
 }
 $('aiRemove').onclick = async () => {
-  const img = getActiveImage();
-  if (!img){ toast('คลิกเลือกรูปก่อน แล้วกดปุ่มนี้อีกครั้ง'); return; }
+  let img = getActiveImage() || topImage();   // ไม่ได้เลือก = ใช้รูปบนสุดให้อัตโนมัติ
+  if (!img){ toast('ยังไม่มีรูปในงาน — อัปโหลดรูปก่อน'); return; }
+  canvas.setActiveObject(img); canvas.requestRenderAll();
   const btn = $('aiRemove');
   const orig = btn.textContent;
   btn.disabled = true;
@@ -1305,12 +1387,15 @@ $('aiRemove').onclick = async () => {
 
     btn.textContent = 'AI กำลังตัดพื้นหลัง…';
     const out = await removeBackground(blob, {
+      model: 'isnet',                         // โมเดลความละเอียดเต็ม คุณภาพสูงสุด
+      output: { format: 'image/png', quality: 1 },
       progress: (key, cur, tot) => {
         if (key && key.startsWith('fetch') && tot) btn.textContent = `โหลดโมเดล AI ${Math.round(cur/tot*100)}%`;
         else btn.textContent = 'AI กำลังตัดพื้นหลัง…';
       }
     });
 
+    if (!img._restoreSrc) img._restoreSrc = c;   // เก็บภาพก่อนตัด ไว้ให้แปรง "คืนกลับ" ใช้
     const url = URL.createObjectURL(out);
     await new Promise((res, rej) => {
       const ni = new Image();
@@ -1328,7 +1413,7 @@ $('aiRemove').onclick = async () => {
     });
     canvas.requestRenderAll();
     snapshotSoon();
-    toast('ตัดพื้นหลังด้วย AI สำเร็จ — เก็บขอบละเอียดเพิ่มได้ด้วยยางลบ');
+    toast('ตัดพื้นหลังด้วย AI สำเร็จ — ส่วนไหนหาย/เกิน ใช้เครื่องมือยางลบ โหมด "คืนกลับ/ลบออก" เก็บงานต่อได้');
   } catch(err){
     console.error('AI remove failed:', err);
     toast('AI ใช้ไม่ได้ตอนนี้ — ต้องออนไลน์ครั้งแรกเพื่อโหลดโมเดล ระหว่างนี้ใช้โหมดจิ้มสีแทนได้');
@@ -1341,8 +1426,14 @@ $('aiRemove').onclick = async () => {
 /* =========================================================
    manual eraser (destination-out on source pixels)
    ========================================================= */
-let erasing = false, lastPt = null;
+let erasing = false, lastPt = null, eraseKind = 'erase';
 $('eraseSize').oninput = e => $('eraseSizeVal').textContent = e.target.value;
+document.querySelectorAll('[data-emode]').forEach(b => b.onclick = () => {
+  eraseKind = b.dataset.emode;
+  document.querySelectorAll('[data-emode]').forEach(x => x.classList.toggle('on', x === b));
+  if (eraseKind === 'restore' && activeEraseImage && !activeEraseImage._restoreSrc)
+    toast('รูปนี้ยังไม่เคยถูกลบพื้น/ยางลบ — ไม่มีอะไรให้คืน');
+});
 
 function bakeImage(img){
   // burn current filters into pixels so erasing works on what you see
@@ -1362,13 +1453,29 @@ function eraseStroke(img, from, to, size){
   const ctx = el.getContext('2d');
   const a = imageLocalPoint(img, from), b = imageLocalPoint(img, to);
   const scale = (Math.abs(img.scaleX)+Math.abs(img.scaleY))/2 || 1;
-  ctx.save();
-  ctx.globalCompositeOperation = 'destination-out';
-  ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.fillStyle = 'rgba(0,0,0,1)';
-  ctx.lineWidth = size/scale; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-  ctx.beginPath(); ctx.arc(b.x, b.y, (size/scale)/2, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
+  const r = (size/scale)/2;
+  if (eraseKind === 'restore'){
+    const bak = img._restoreSrc;
+    if (bak){
+      const steps = Math.max(1, Math.ceil(Math.hypot(b.x-a.x, b.y-a.y) / Math.max(2, r*0.6)));
+      for (let i = 0; i <= steps; i++){
+        const x = a.x + (b.x-a.x)*i/steps, y = a.y + (b.y-a.y)*i/steps;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.clip();
+        ctx.clearRect(x-r-1, y-r-1, r*2+2, r*2+2);
+        ctx.drawImage(bak, 0, 0);
+        ctx.restore();
+      }
+    }
+  } else {
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.fillStyle = 'rgba(0,0,0,1)';
+    ctx.lineWidth = size/scale; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
   img.dirty = true;
   if (img._element !== el) img.applyFilters();
   canvas.requestRenderAll();
@@ -1391,7 +1498,92 @@ function bakeOnce(){
   if (bakedFor !== activeEraseImage || !(activeEraseImage._originalElement||{}).getContext){
     bakeImage(activeEraseImage); bakedFor = activeEraseImage;
   }
+  if (!activeEraseImage._restoreSrc){   // เก็บ backup ก่อนยางลบครั้งแรก ให้โหมด "คืนกลับ" ใช้
+    const oe = activeEraseImage._originalElement;
+    const bcv = document.createElement('canvas'); bcv.width = oe.width; bcv.height = oe.height;
+    bcv.getContext('2d').drawImage(oe, 0, 0);
+    activeEraseImage._restoreSrc = bcv;
+  }
 }
+
+/* =========================================================
+   crop
+   ========================================================= */
+let cropState = null;
+function topImage(){
+  const imgs = canvas.getObjects().filter(o => o.type === 'image');
+  return imgs.length ? imgs[imgs.length - 1] : null;
+}
+function enterCrop(img){
+  if (!img){ toast('ยังไม่มีรูปในงาน — อัปโหลดรูปก่อน'); setTool('select'); return; }
+  if (cropState) exitCrop(false);
+  const angle = img.angle || 0;
+  img.set('angle', 0); img.setCoords();
+  const b = img.getBoundingRect(true, true);
+  const rect = new fabric.Rect({
+    left: b.left, top: b.top, width: b.width, height: b.height,
+    fill: 'rgba(201,168,76,0.10)', stroke: '#C9A84C', strokeWidth: 2, strokeDashArray: [8,5],
+    strokeUniform: true, lockRotation: true, name: '__crop', excludeFromExport: true, objectCaching: false
+  });
+  rect.setControlsVisibility({ mtr: false });
+  cropState = { img, rect, angle };
+  img.set({ selectable: false, evented: false });
+  canvas.add(rect);
+  canvas.setActiveObject(rect);
+  canvas.requestRenderAll();
+}
+function exitCrop(apply){
+  if (!cropState) return;
+  const { img, rect, angle } = cropState;
+  if (apply){
+    const tl = imageLocalPoint(img, { x: rect.left, y: rect.top });
+    const br = imageLocalPoint(img, { x: rect.left + rect.getScaledWidth(), y: rect.top + rect.getScaledHeight() });
+    const x1 = Math.max(0, Math.min(tl.x, br.x)), y1 = Math.max(0, Math.min(tl.y, br.y));
+    const x2 = Math.min(img.width, Math.max(tl.x, br.x)), y2 = Math.min(img.height, Math.max(tl.y, br.y));
+    const sw = Math.round(x2 - x1), sh = Math.round(y2 - y1);
+    if (sw > 2 && sh > 2){
+      const el = img._originalElement;
+      const nc = document.createElement('canvas'); nc.width = sw; nc.height = sh;
+      nc.getContext('2d').drawImage(el, Math.round(x1), Math.round(y1), sw, sh, 0, 0, sw, sh);
+      img.setElement(nc);
+      img.set({ width: sw, height: sh,
+        left: rect.left + rect.getScaledWidth()/2,
+        top:  rect.top  + rect.getScaledHeight()/2,
+        originX: 'center', originY: 'center' });
+      delete img._restoreSrc;   // ภาพเปลี่ยนขนาด backup เดิมใช้ไม่ได้แล้ว
+      rebuildFilters(img);
+      toast('ครอบตัดแล้ว');
+    }
+  }
+  img.set({ selectable: true, evented: true, angle });
+  img.setCoords();
+  canvas.remove(rect);
+  cropState = null;
+  canvas.setActiveObject(img);
+  canvas.requestRenderAll();
+  snapshotSoon();
+}
+$('cropOk').onclick = () => { exitCrop(true); setTool('select'); };
+$('cropCancel').onclick = () => { exitCrop(false); setTool('select'); };
+document.querySelectorAll('[data-cropar]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-cropar]').forEach(x => x.classList.toggle('on', x === b));
+  if (!cropState || b.dataset.cropar === 'free') return;
+  const [aw, ah] = b.dataset.cropar.split(',').map(Number);
+  const rect = cropState.rect, img = cropState.img;
+  const cx0 = rect.left + rect.getScaledWidth()/2, cy0 = rect.top + rect.getScaledHeight()/2;
+  let w = rect.getScaledWidth(), h = w * ah / aw;
+  const maxH = img.getScaledHeight();
+  if (h > maxH){ h = maxH; w = h * aw / ah; }
+  rect.set({ scaleX: 1, scaleY: 1, width: w, height: h, left: cx0 - w/2, top: cy0 - h/2 });
+  rect.setCoords();
+  canvas.requestRenderAll();
+});
+canvas.on('mouse:dblclick', opt => {
+  if (opt.target && opt.target.type === 'image'){
+    canvas.setActiveObject(opt.target);
+    setTool('crop');
+  }
+});
 
 /* =========================================================
    drawing
@@ -1900,7 +2092,12 @@ Promise.all([
 });
 // leave magic mode when switching tools
 const _setTool = setTool;
-setTool = function(t){ magicMode = false; bakedFor = null; _setTool(t); };
+setTool = function(t){
+  if (cropState && t !== 'crop') exitCrop(false);
+  magicMode = false; bakedFor = null;
+  _setTool(t);
+  if (t === 'crop') enterCrop(getActiveImage() || topImage());
+};
 </script>
 </body>
 </html>
