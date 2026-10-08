@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- background -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1A1A1F"/>
+      <stop offset="0.55" stop-color="#0E0E11"/>
+      <stop offset="1" stop-color="#0B0B0D"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.92" r="0.9">
+      <stop offset="0" stop-color="#8B0000" stop-opacity="0.55"/>
+      <stop offset="0.45" stop-color="#8B0000" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#8B0000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E8CB7A"/>
+      <stop offset="0.5" stop-color="#C9A84C"/>
+      <stop offset="1" stop-color="#9A7D35"/>
+    </linearGradient>
+    <linearGradient id="goldV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E8CB7A"/>
+      <stop offset="1" stop-color="#C9A84C"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C33030"/>
+      <stop offset="1" stop-color="#8B0000"/>
+    </linearGradient>
+    <linearGradient id="mountFar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7A1212"/>
+      <stop offset="1" stop-color="#4E0808"/>
+    </linearGradient>
+    <linearGradient id="mountNear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E0BF6B"/>
+      <stop offset="1" stop-color="#A8873A"/>
+    </linearGradient>
+    <linearGradient id="penBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F0D88E"/>
+      <stop offset="0.5" stop-color="#C9A84C"/>
+      <stop offset="1" stop-color="#8A7434"/>
+    </linearGradient>
+    <clipPath id="frameClip">
+      <rect x="232" y="252" width="520" height="460" rx="52"/>
+    </clipPath>
+  </defs>
+
+  <!-- ===== background (full bleed) ===== -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <!-- subtle circuit lines, TESR signature -->
+  <g stroke="#C9A84C" stroke-width="6" opacity="0.14" fill="none" stroke-linecap="round">
+    <path d="M60 170 H250 l50 50 H420"/>
+    <circle cx="430" cy="220" r="10" fill="#C9A84C" stroke="none"/>
+    <path d="M964 850 H760 l-46 -46 H600"/>
+    <circle cx="592" cy="804" r="10" fill="#C9A84C" stroke="none"/>
+  </g>
+
+  <!-- ===== photo frame ===== -->
+  <g>
+    <!-- frame shadow -->
+    <rect x="216" y="240" width="552" height="492" rx="64" fill="#000000" opacity="0.5"
+          transform="translate(0,22)"/>
+    <!-- gold frame -->
+    <rect x="216" y="236" width="552" height="492" rx="64" fill="url(#gold)"/>
+    <!-- inner dark mat -->
+    <rect x="232" y="252" width="520" height="460" rx="52" fill="#141417"/>
+
+    <!-- picture content, clipped -->
+    <g clip-path="url(#frameClip)">
+      <!-- sky -->
+      <rect x="232" y="252" width="520" height="460" fill="#1C1C22"/>
+      <!-- sun -->
+      <circle cx="620" cy="400" r="86" fill="url(#sun)"/>
+      <circle cx="620" cy="400" r="86" fill="none" stroke="#E8CB7A" stroke-width="10"/>
+      <!-- far mountain (crimson) -->
+      <path d="M232 712 L398 448 L520 640 L560 584 L660 712 Z" fill="url(#mountFar)"/>
+      <!-- near mountain (gold) -->
+      <path d="M232 712 L470 712 L752 712 L752 700 L590 470 L488 606 L430 532 Z" fill="url(#mountNear)"/>
+      <!-- near mountain snow highlight -->
+      <path d="M590 470 L632 530 L600 522 L572 548 L546 524 Z" fill="#F4E4B0"/>
+    </g>
+  </g>
+
+  <!-- ===== edit pen, diagonal over the frame ===== -->
+  <g transform="rotate(45 700 672)">
+    <!-- shadow -->
+    <g transform="translate(10,16)" opacity="0.45">
+      <rect x="640" y="430" width="120" height="330" rx="26" fill="#000"/>
+      <path d="M640 760 h120 l-60 118 Z" fill="#000"/>
+    </g>
+    <!-- body -->
+    <rect x="640" y="430" width="120" height="330" rx="26" fill="url(#penBody)"/>
+    <!-- grip band -->
+    <rect x="640" y="700" width="120" height="34" fill="#8B0000"/>
+    <rect x="640" y="734" width="120" height="8" fill="#5E0A0A"/>
+    <!-- nib -->
+    <path d="M640 742 h120 l-60 118 Z" fill="url(#goldV)"/>
+    <path d="M640 742 h120 l-60 118 Z" fill="#000" opacity="0.18"/>
+    <!-- nib tip -->
+    <circle cx="700" cy="846" r="17" fill="#8B0000" stroke="#E8CB7A" stroke-width="7"/>
+    <!-- top cap -->
+    <rect x="640" y="430" width="120" height="26" rx="13" fill="#8B0000"/>
+  </g>
+  <!-- sparkle: edited! -->
+  <g fill="#E8CB7A">
+    <path d="M836 320 l14 38 38 14 -38 14 -14 38 -14 -38 -38 -14 38 -14 Z"/>
+    <path d="M770 238 l8 22 22 8 -22 8 -8 22 -8 -22 -22 -8 22 -8 Z" opacity="0.85"/>
+  </g>
+
+  <!-- ===== wordmark bar ===== -->
+  <g font-family="DejaVu Sans, Arial, sans-serif" text-anchor="middle">
+    <text x="512" y="905" font-size="104" font-weight="bold" fill="#EDEAE2" letter-spacing="14">TESR</text>
+    <rect x="356" y="928" width="312" height="7" fill="url(#gold)"/>
+    <text x="512" y="986" font-size="46" font-weight="bold" fill="#C9A84C" letter-spacing="30">FORGE</text>
+  </g>
+</svg>
