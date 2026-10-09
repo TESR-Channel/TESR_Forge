@@ -48,7 +48,7 @@ input[type=color]{padding:1px; width:34px; height:28px; cursor:pointer}
 input[type=number]{width:70px}
 
 /* ---------- Layout ---------- */
-#app{display:grid; grid-template-rows:56px 48px 1fr; height:100vh}
+#app{display:grid; grid-template-rows:56px 48px 1fr; height:100vh; height:100dvh}
 header{
   display:flex; align-items:center; gap:16px; padding:0 14px;
   background:var(--panel); border-bottom:1px solid var(--line); position:relative; z-index:20;
@@ -251,6 +251,48 @@ main{display:grid; grid-template-columns:1fr 292px; min-height:0}
 @media (max-width:960px){
   main{grid-template-columns:1fr 250px}
   .hgroup label{display:none}
+}
+
+/* ---------- Mobile layout (phones) ---------- */
+@media (max-width:760px){
+  #app{grid-template-rows:auto auto 1fr}
+
+  /* header: compact single row, swipe sideways if overflowing */
+  header{flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; gap:10px; padding:8px 10px;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none}
+  header::-webkit-scrollbar{display:none}
+  header > *{flex:none}
+  .spacer{min-width:4px}
+  .brand .mark{width:24px; height:24px}
+  .brand .mark::before{inset:4px}
+  .brand h1{font-size:13px; white-space:nowrap}
+  .brand small{display:none}
+  .btn{padding:8px 10px; font-size:12.5px}
+  #zoomLabel{width:38px}
+
+  /* toolbar: swipe sideways */
+  #toolRail{justify-content:flex-start; -webkit-overflow-scrolling:touch; scrollbar-width:none}
+  #toolRail::-webkit-scrollbar{display:none}
+  .tool{padding:5px 12px}
+
+  /* main: stack — canvas on top, panel as bottom sheet */
+  main{grid-template-columns:1fr; grid-template-rows:minmax(0,1.35fr) minmax(0,1fr)}
+  #props{border-left:none; border-top:2px solid var(--gold-dim)}
+  #panelScroll{padding:10px 12px 16px}
+  #layersBox{max-height:96px}
+
+  #stageInner{padding:14px}
+  #pageBar{bottom:30px; padding:4px 6px; gap:3px; max-width:94vw; overflow-x:auto}
+  #pageBar .pbtn{padding:4px 7px; font-size:11.5px}
+  #pageBar #pgLabel{min-width:54px; font-size:11.5px}
+  #statusBar{display:none}
+
+  /* size popover: pin to screen, not the button */
+  #sizePop{position:fixed; top:auto; left:10px; right:10px; bottom:10px; width:auto;
+    max-height:70dvh; overflow-y:auto}
+
+  .modal{width:min(340px, 92vw)}
+  #ctxMenu{min-width:170px}
 }
 ::-webkit-scrollbar{width:10px; height:10px}
 ::-webkit-scrollbar-thumb{background:var(--line2); border-radius:6px; border:2px solid var(--panel)}
@@ -710,7 +752,9 @@ function applyZoom(z){
 }
 function fitZoom(){
   const r = stage.getBoundingClientRect();
-  const z = Math.min((r.width-100)/DW, (r.height-120)/DH, 1.5);
+  const small = window.innerWidth <= 760;
+  const padW = small ? 32 : 100, padH = small ? 90 : 120;
+  const z = Math.min((r.width-padW)/DW, (r.height-padH)/DH, 1.5);
   applyZoom(z);
 }
 $('zoomIn').onclick  = () => applyZoom(zoom*1.2);
@@ -2093,7 +2137,8 @@ $('projInput').onchange = e => {
 };
 
 /* ---------- boot ---------- */
-window.addEventListener('resize', () => { /* keep zoom; user can Fit */ });
+let _rzTm = null;
+window.addEventListener('resize', () => { clearTimeout(_rzTm); _rzTm = setTimeout(fitZoom, 200); });
 Promise.all([
   document.fonts.load('600 16px Prompt'),
   document.fonts.load('400 16px Sarabun'),
