@@ -20,7 +20,8 @@ async def main():
     for it in ITEMS:
         await one(*it); print("ok", it[0], flush=True)
 asyncio.run(main())
-z = os.path.join(os.path.expanduser("~"), "TESR_tts.zip")
+dl = os.path.join(os.path.expanduser("~"), "Downloads")
+z = os.path.join(dl if os.path.isdir(dl) else os.path.expanduser("~"), "TESR_tts.zip")
 with zipfile.ZipFile(z, "w") as zf:
     for it in ITEMS: zf.write(os.path.join(OUT, it[0] + ".mp3"), it[0] + ".mp3")
 print("ZIP", z)
